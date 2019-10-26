@@ -3,6 +3,7 @@
 
 module Lib where
 
+import Control.Monad
 import Snippets
 import Text.Pandoc
 
@@ -15,8 +16,8 @@ expandAnnotations = \case
 
 
 
-inlineCode :: Block -> IO Block
-inlineCode = \case
+inlineSnippets :: Block -> IO Block
+inlineSnippets = \case
   Para [Link _ [Str t] ("Snip", _)]  -> runSnippet t
   Plain [Link _ [Str t] ("Snip", _)] -> runSnippet t
   t -> pure t
@@ -31,6 +32,19 @@ inlineCode = \case
     snippet fp defn = do
       file <- readFile fp
       pure $ codeBlock $ getDefinition file $ Just defn
+
+
+exercises :: Block -> Block
+exercises = \case
+  DefinitionList [([Str "Exercise"], bs)] ->
+    Div ("", [], []) $ join
+      [ pure $ Para [Str ""]
+      , pure . Plain . pure $ RawInline (Format "latex") "\\begin{exercise}"
+      , join bs
+      , pure . Plain . pure $ RawInline (Format "latex") "\\end{exercise}"
+      , pure $ Para [Str ""]
+      ]
+  t -> t
 
 
 

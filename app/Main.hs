@@ -9,7 +9,8 @@ import Text.Pandoc.Walk
 main :: IO ()
 main = passes
   [ liftK $ walk expandAnnotations
-  , walkM inlineCode
+  , walkM inlineSnippets
+  , liftK $ walk exercises
   ]
 
 
