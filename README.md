@@ -27,6 +27,15 @@ data Haskell = Haskell
 
 ---
 
+```markdown
+Exercise
+
+: blah blah blah
+```
+
+expands into `\begin{exercise}blah blah blah\end{exercise}`. You can use other
+block elements in the `:` bit so long as they are indented by 4.
+
 ### Inline Transformations
 
 `[txt](Ann)` will produce `\ann{txt}`, which is useful for drawing code
