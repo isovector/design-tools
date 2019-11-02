@@ -6,6 +6,7 @@ module Lib where
 import Control.Monad
 import Snippets
 import Text.Pandoc
+import Data.List (uncons)
 
 
 expandAnnotations :: Inline -> Inline
@@ -25,13 +26,13 @@ inlineSnippets = \case
   where
     runSnippet :: String -> IO Block
     runSnippet args = do
-      [fp, defn] <- pure $ splitArgs args
-      snippet fp defn
+      (fp : more_args) <- pure $ splitArgs args
+      snippet fp $ fmap fst $ uncons more_args
 
-    snippet :: FilePath -> String -> IO Block
+    snippet :: FilePath -> Maybe String -> IO Block
     snippet fp defn = do
       file <- readFile fp
-      pure $ codeBlock $ getDefinition file $ Just defn
+      pure $ codeBlock $ getDefinition file defn
 
 
 exercises :: Block -> Block
