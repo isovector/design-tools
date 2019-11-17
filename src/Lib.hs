@@ -23,7 +23,7 @@ inlineSnippets = \case
     snippet :: FilePath -> Maybe String -> IO Block
     snippet fp defn = do
       file <- readFile fp
-      pure $ codeBlock $ getDefinition file defn
+      pure $ codeBlock $ getDefinition fp file defn
 
 
 codeBlock :: String -> Block

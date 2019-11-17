@@ -21,13 +21,16 @@ matchDefinition decl line =
     pure f
 
 
-getDefinition :: String -> Maybe String -> String
-getDefinition file (Just decl)
+getDefinition :: FilePath -> String -> Maybe String -> String
+getDefinition fp file (Just decl)
     = unlines . func $ ls
   where
     ls = takeWhile (not . null)
        . dropWhile (isNothing . matchDefinition decl)
        $ lines file
-    func = fromJust . matchDefinition decl $ head ls
-getDefinition file Nothing = file
+    func = fromJust
+         . matchDefinition decl
+         . maybe (error $ "everything is fucked: " ++ fp ++ ":" ++ decl) id
+         $ listToMaybe ls
+getDefinition _ file Nothing = file
 
