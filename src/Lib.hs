@@ -4,7 +4,7 @@
 module Lib where
 
 import Data.Foldable
-import Data.List (uncons)
+import Data.List (uncons, sort)
 import Snippets
 import Text.Pandoc
 import CSV
@@ -51,6 +51,7 @@ showCSV = \case
 showVector :: V.Vector String -> Block
 showVector = BulletList
            . fmap (pure . Plain . pure . Str)
+           . sort
            . toList
 
 
