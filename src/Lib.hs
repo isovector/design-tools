@@ -1,8 +1,11 @@
-{-# LANGUAGE LambdaCase   #-}
-{-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE LambdaCase      #-}
+{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE ViewPatterns    #-}
 
 module Lib where
 
+import Data.List
+import Control.Arrow
 import Data.Foldable
 import Data.List (uncons, sort)
 import Snippets
@@ -14,8 +17,8 @@ import qualified Data.Vector as V
 
 inlineSnippets :: Block -> IO Block
 inlineSnippets = \case
-  Para [Link _ [Str t] ("Snip", _)]  -> runSnippet t
-  Plain [Link _ [Str t] ("Snip", _)] -> runSnippet t
+  Para [Link _ (Strs t) ("Snip", _)]  -> runSnippet t
+  Plain [Link _ (Strs t) ("Snip", _)] -> runSnippet t
   t -> pure t
 
   where
@@ -32,8 +35,8 @@ inlineSnippets = \case
 
 showCSV :: Block -> IO Block
 showCSV = \case
-  Para [Link _ [Str t] ("CSV", _)]  -> runCSV t
-  Plain [Link _ [Str t] ("CSV", _)] -> runCSV t
+  Para [Link _ (Strs t) ("CSV", _)]  -> runCSV t
+  Plain [Link _ (Strs t) ("CSV", _)] -> runCSV t
   t -> pure t
 
   where
@@ -46,6 +49,25 @@ showCSV = \case
         [field, value, proj] ->
           showVector $ selectCSV proj $ filterCSV field value csv
         _ -> error $ "bad argument format given to CSV: " <> args
+
+
+pattern Strs :: String -> [Inline]
+pattern Strs ts <-
+  ((id &&& id)
+    ->
+      ( all isStr -> True
+      , foldMap fromStr -> ts
+      )
+  )
+
+isStr :: Inline -> Bool
+isStr (Str _) = True
+isStr Space = True
+isStr _ = False
+
+fromStr :: Inline -> String
+fromStr (Str s) = s
+fromStr Space = " "
 
 
 showVector :: V.Vector String -> Block
