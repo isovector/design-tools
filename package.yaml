@@ -23,6 +23,10 @@ dependencies:
 - base >= 4.7 && < 5
 - pandoc
 - pandoc-types
+- cassava
+- containers
+- bytestring
+- vector
 
 library:
   source-dirs: src

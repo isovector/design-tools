@@ -11,6 +11,7 @@ main :: IO ()
 main = passes
   [ liftK $ walk $ linkToLatexCmd "Ann" "ann"
   , walkM inlineSnippets
+  , walkM showCSV
   , liftK $ walk $ defnToLatexEnv "Exercise" "exercise"
   , liftK $ walk $ quoteToDefn "TODO(sandy):" "TODO"
   ]
