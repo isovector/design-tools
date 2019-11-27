@@ -5,6 +5,8 @@ import KEndo
 import Lib
 import Text.Pandoc.JSON
 import Text.Pandoc.Walk
+import DeathNotes
+import Text.Pandoc
 
 
 main :: IO ()
@@ -14,6 +16,7 @@ main = passes
   , walkM showCSV
   , liftK $ walk $ defnToLatexEnv "Exercise" "exercise"
   , liftK $ walk $ quoteToDefn "TODO(sandy):" "TODO"
+  , runIOorExplode . walkM writeLatexDeathNotes
   ]
 
 
