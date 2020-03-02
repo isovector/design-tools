@@ -5,6 +5,16 @@ module Combinators where
 
 import Control.Monad
 import Text.Pandoc
+import Data.List
+
+codeToLatexCmd :: (String -> Maybe String) -> String -> Inline -> Inline
+codeToLatexCmd match cmd = \case
+  Code _ (match -> Just t) ->
+    RawInline (Format "latex") $ "\\" ++ cmd ++ "{" ++ t ++ "}"
+  t -> t
+
+prefixCodeToLatexCmd :: String -> String -> Inline -> Inline
+prefixCodeToLatexCmd prefix = codeToLatexCmd (stripPrefix prefix)
 
 
 linkToLatexCmd :: String -> String -> Inline -> Inline

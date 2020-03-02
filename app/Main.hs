@@ -12,6 +12,7 @@ import Text.Pandoc
 main :: IO ()
 main = passes
   [ liftK $ walk $ linkToLatexCmd "Ann" "ann"
+  , liftK $ walk $ prefixCodeToLatexCmd "law:" "lawname"
   , walkM inlineSnippets
   , walkM showCSV
   , liftK $ walk $ defnToLatexEnv "Exercise" "exercise"
