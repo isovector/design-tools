@@ -22,8 +22,8 @@ splitDeathNote (Para (Str "death" : ps) : bs)
 splitDeathNote _ = Nothing
 
 
-writeLatexDeathNotes :: PandocMonad m => Inline -> m Inline
-writeLatexDeathNotes (DeathNote bs) = do
+writeLatexDeathNotes :: PandocMonad m => Format -> Inline -> m Inline
+writeLatexDeathNotes _ (DeathNote bs) = do
   res <- writeLaTeX def {writerExtensions = pandocExtensions }
        $ Pandoc mempty bs
   pure $
@@ -32,5 +32,5 @@ writeLatexDeathNotes (DeathNote bs) = do
       , T.unpack res
       , "}"
       ]
-writeLatexDeathNotes x = pure x
+writeLatexDeathNotes _ x = pure x
 

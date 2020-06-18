@@ -7,28 +7,31 @@ import Control.Monad
 import Text.Pandoc
 import Data.List
 
-codeToLatexCmd :: (String -> Maybe String) -> String -> Inline -> Inline
-codeToLatexCmd match cmd = \case
-  Code _ (match -> Just t) ->
-    RawInline (Format "latex") $ "\\" ++ cmd ++ "{" ++ t ++ "}"
+codeToLatexCmd :: Format -> (String -> Maybe String) -> String -> Inline -> Inline
+codeToLatexCmd format match cmd = \case
+  Code _ (match -> Just t) -> mkInline format cmd t
   t -> t
 
-prefixCodeToLatexCmd :: String -> String -> Inline -> Inline
-prefixCodeToLatexCmd prefix = codeToLatexCmd (stripPrefix prefix)
+prefixCodeToLatexCmd :: Format -> String -> String -> Inline -> Inline
+prefixCodeToLatexCmd format prefix = codeToLatexCmd format (stripPrefix prefix)
 
 
-linkToLatexCmd :: String -> String -> Inline -> Inline
-linkToLatexCmd match with = \case
+linkToLatexCmd :: Format -> String -> String -> Inline -> Inline
+linkToLatexCmd format match with = \case
   Link _ [Str t] (name, _)
-    | match == name ->
-        RawInline (Format "latex") $ "\\" ++ with ++ "{" ++ t ++ "}"
+    | match == name -> mkInline format with t
   t -> t
 
-defnToLatexEnv :: String -> String -> Block -> Block
-defnToLatexEnv match with = \case
+mkInline :: Format -> String -> String -> Inline
+mkInline (Format "epub") cls content = Span ("", [cls], []) [Str content]
+mkInline (Format "latex") cls content =
+  RawInline (Format "latex") $ "\\" ++ cls ++ "{" ++ content ++ "}"
+
+defnToLatexEnv :: Format -> String -> String -> Block -> Block
+defnToLatexEnv format match with = \case
   DefinitionList [([Str name], bs)]
     | name == match ->
-        mkEnv with $ join bs
+        mkEnv format with $ join bs
   t -> t
 
 
@@ -40,8 +43,8 @@ quoteToDefn match with = \case
   t -> t
 
 
-mkEnv :: String -> [Block] -> Block
-mkEnv env bs =
+mkEnv :: Format -> String -> [Block] -> Block
+mkEnv (Format "latex") env bs =
   Div ("", [], []) $ join
     [ pure $ Para [Str ""]
     , pure . Plain . pure . RawInline (Format "latex") $ "\\begin{" ++ env ++ "}"
@@ -49,4 +52,5 @@ mkEnv env bs =
     , pure . Plain . pure . RawInline (Format "latex") $ "\\end{" ++ env ++ "}"
     , pure $ Para [Str ""]
     ]
+mkEnv (Format "epub") env bs = Div ("", [env], []) bs
 
