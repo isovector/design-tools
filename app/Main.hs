@@ -3,6 +3,7 @@
 
 module Main where
 
+import Ghci
 import Combinators
 import KEndo
 import Lib
@@ -21,6 +22,7 @@ main = toJSONFilter $ \(Just format :: Maybe Format) (p :: Pandoc) -> do
     , liftK $ walk $ prefixCodeToLatexCmd format "law:" "lawname"
     , walkM inlineSnippets
     , walkM showCSV
+    , walkM emitGhci
     , liftK $ walk $ defnToLatexEnv format "Exercise" "exercise"
     , liftK $ walk $ quoteToDefn "TODO(sandy):" "TODO"
     , runIOorExplode . walkM (writeLatexDeathNotes format)

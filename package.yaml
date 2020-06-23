@@ -28,6 +28,11 @@ dependencies:
 - bytestring
 - vector
 - text
+- hashable
+- directory
+- process
+- lens
+- silently
 
 library:
   source-dirs: src
