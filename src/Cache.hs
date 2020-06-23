@@ -30,7 +30,7 @@ checkCache key = doesFileExist (hashFile key) >>= \case
   True -> safeRead <$> readFile (hashFile key)
 
 hashFile :: Hashable key => key -> FilePath
-hashFile key = cacheDir ++ show (hash key)
+hashFile key = cacheDir ++ "/" ++ show (hash key)
 
 safeRead :: Read key => String -> Maybe key
 safeRead = listToMaybe . fmap fst . reads

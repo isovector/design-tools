@@ -6,7 +6,6 @@ import Cache
 import Control.Lens
 import Data.Bool
 import Data.List
-import System.IO.Silently
 import System.Process
 import Text.Pandoc.JSON
 
@@ -32,7 +31,6 @@ format
 runGhci :: FilePath -> String -> IO [(String, String)]
 runGhci fp str
   = fmap (zip (lines str) . responses)
-  . silence
   . readProcess "stack" ["repl"]
   $ unlines [":l " ++ fp, str]
 
@@ -42,8 +40,6 @@ responses
   = fmap unlines
   . fmap (_head %~ removeManyTags)
   . groupBy (\_ a -> not $ isResponse a)
-  . drop 1
-  . dropWhile (not . isPrefixOf "Ok, ")
   . drop 1
   . dropWhile (not . isPrefixOf "Ok, ")
   . lines

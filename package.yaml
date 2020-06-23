@@ -32,7 +32,6 @@ dependencies:
 - directory
 - process
 - lens
-- silently
 
 library:
   source-dirs: src
