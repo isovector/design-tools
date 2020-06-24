@@ -32,6 +32,7 @@ dependencies:
 - directory
 - process
 - lens
+- pretty-show
 
 library:
   source-dirs: src

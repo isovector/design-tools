@@ -13,6 +13,8 @@ import DeathNotes
 import Text.Pandoc
 import System.IO
 
+import Text.Show.Pretty
+
 
 main :: IO ()
 main = toJSONFilter $ \(Just format :: Maybe Format) (p :: Pandoc) -> do
@@ -23,10 +25,25 @@ main = toJSONFilter $ \(Just format :: Maybe Format) (p :: Pandoc) -> do
     , walkM inlineSnippets
     , walkM showCSV
     , walkM emitGhci
+    , fmap pure compress
     , liftK $ walk $ defnToLatexEnv format "Exercise" "exercise"
     , liftK $ walk $ quoteToDefn "TODO(sandy):" "TODO"
     , runIOorExplode . walkM (writeLatexDeathNotes format)
+    , \p -> writeFile "/tmp/pandoc" (ppShow p) >> pure p
     ]
+
+
+compress :: Pandoc -> Pandoc
+compress (Pandoc meta blocks) = Pandoc meta $ go blocks
+  where
+    go ( CodeBlock (cb_id, ["haskell"], kvs) str1
+       : CodeBlock (_, ["haskell"], _) str2
+       : cs
+       ) = go $ CodeBlock (cb_id, ["haskell"], kvs)
+                  (str1 ++ "\n\n" ++ str2)
+              : cs
+    go (x : xs) = x : go xs
+    go [] = []
 
 
 passes :: Pandoc -> [Pandoc -> IO Pandoc] -> IO Pandoc
