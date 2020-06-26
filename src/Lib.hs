@@ -4,15 +4,17 @@
 
 module Lib where
 
-import Data.List
-import Control.Arrow
-import Data.Foldable
-import Data.List (uncons, sort)
-import Snippets
-import Text.Pandoc
-import CSV
+import           CSV
+import           Control.Arrow
 import qualified Data.ByteString.Lazy as BS
+import           Data.Foldable
+import           Data.List
+import           Data.List (uncons, sort)
+import           Data.Text (Text)
+import qualified Data.Text as T
 import qualified Data.Vector as V
+import           Snippets
+import           Text.Pandoc
 
 
 inlineSnippets :: Block -> IO Block
@@ -22,15 +24,15 @@ inlineSnippets = \case
   t -> pure t
 
   where
-    runSnippet :: String -> IO Block
+    runSnippet :: Text -> IO Block
     runSnippet args = do
       (fp : more_args) <- pure $ splitArgs args
-      snippet fp $ fmap fst $ uncons more_args
+      snippet (T.unpack fp) $ fmap fst $ uncons more_args
 
-    snippet :: FilePath -> Maybe String -> IO Block
+    snippet :: FilePath -> Maybe Text -> IO Block
     snippet fp defn = do
       file <- readFile fp
-      pure $ codeBlock $ getDefinition fp file defn
+      pure $ codeBlock $ T.pack $ getDefinition fp file $ fmap T.unpack defn
 
 
 showCSV :: Block -> IO Block
@@ -40,18 +42,18 @@ showCSV = \case
   t -> pure t
 
   where
-    runCSV :: String -> IO Block
+    runCSV :: Text -> IO Block
     runCSV args = do
       (fp : more_args) <- pure $ splitArgs args
-      csv <- loadCSV <$> BS.readFile fp
+      csv <- loadCSV <$> BS.readFile (T.unpack fp)
       pure $ case more_args of
         [proj] -> showVector $ selectCSV proj csv
         [field, value, proj] ->
           showVector $ selectCSV proj $ filterCSV field value csv
-        _ -> error $ "bad argument format given to CSV: " <> args
+        _ -> error $ "bad argument format given to CSV: " <> T.unpack args
 
 
-pattern Strs :: String -> [Inline]
+pattern Strs :: Text -> [Inline]
 pattern Strs ts <-
   ((id &&& id)
     ->
@@ -65,26 +67,26 @@ isStr (Str _) = True
 isStr Space = True
 isStr _ = False
 
-fromStr :: Inline -> String
+fromStr :: Inline -> Text
 fromStr (Str s) = s
 fromStr Space = " "
 
 
-showVector :: V.Vector String -> Block
+showVector :: V.Vector Text -> Block
 showVector = BulletList
            . fmap (pure . Plain . pure . Str)
            . sort
            . toList
 
 
-codeBlock :: String -> Block
+codeBlock :: Text -> Block
 codeBlock = CodeBlock ("", ["haskell"], [])
 
 
-splitArgs :: String -> [String]
+splitArgs :: Text -> [Text]
 splitArgs s =
-  case break (== ':') s of
+  case T.break (== ':') s of
     ("", "") -> []
     (as, "") -> [as]
-    (as, drop 1 -> bs) -> as : splitArgs bs
+    (as, T.drop 1 -> bs) -> as : splitArgs bs
 

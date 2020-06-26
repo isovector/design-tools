@@ -29,7 +29,7 @@ writeLatexDeathNotes _ (DeathNote bs) = do
   pure $
     RawInline (Format "latex") $ mconcat
       [ "\\DeathNote{"
-      , T.unpack res
+      , res
       , "}"
       ]
 writeLatexDeathNotes _ x = pure x

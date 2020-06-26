@@ -8,12 +8,15 @@ import Data.Bool
 import Data.List
 import System.Process
 import Text.Pandoc.JSON
+import           Data.Text (Text)
+import qualified Data.Text as T
+
 
 
 emitGhci :: Block -> IO Block
 emitGhci (CodeBlock (_, _, cs) str)
   | Just file <- lookup "ghci" cs
-  = caching (file, str) $ ghciToPandoc file str
+  = caching (file, str) $ ghciToPandoc (T.unpack file) (T.unpack str)
 emitGhci x = pure x
 
 
@@ -24,6 +27,7 @@ ghciToPandoc fp = fmap format . runGhci fp
 format :: [(String, String)] -> Block
 format
   = CodeBlock ("", ["haskell", "ghci"], [])
+  . T.pack
   . unlines
   . fmap (\(req, resp) -> unlines ["> " ++ req, resp])
 

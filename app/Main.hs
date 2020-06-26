@@ -40,7 +40,7 @@ compress (Pandoc meta blocks) = Pandoc meta $ go blocks
        : CodeBlock (_, ["haskell"], _) str2
        : cs
        ) = go $ CodeBlock (cb_id, ["haskell"], kvs)
-                  (str1 ++ "\n\n" ++ str2)
+                  (str1 <> "\n\n" <> str2)
               : cs
     go (x : xs) = x : go xs
     go [] = []

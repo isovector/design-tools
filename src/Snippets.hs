@@ -1,8 +1,10 @@
 module Snippets where
 
-import Data.Maybe
-import Control.Monad
-import Data.List
+import           Control.Monad
+import           Data.List
+import           Data.Maybe
+import           Data.Text (Text)
+import qualified Data.Text as T
 
 
 matchDefinition :: String -> String -> Maybe ([String] -> [String])
