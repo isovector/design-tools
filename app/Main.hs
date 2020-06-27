@@ -25,6 +25,7 @@ main = toJSONFilter $ \(Just format :: Maybe Format) (p :: Pandoc) -> do
     , walkM inlineSnippets
     , walkM showCSV
     , walkM emitGhci
+    , walkM citeLaw
     , fmap pure compress
     , liftK $ walk $ defnToLatexEnv format "Exercise" "exercise"
     , liftK $ walk $ quoteToDefn "TODO(sandy):" "TODO"
