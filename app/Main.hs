@@ -28,6 +28,7 @@ main = toJSONFilter $ \(Just format :: Maybe Format) (p :: Pandoc) -> do
     , walkM citeLaw
     , fmap pure compress
     , liftK $ walk $ defnToLatexEnv format "Exercise" "exercise"
+    , liftK $ walk $ defnToLatexEnv format "Exercises" "exercise"
     , liftK $ walk $ quoteToDefn "TODO(sandy):" "TODO"
     , runIOorExplode . walkM (writeLatexDeathNotes format)
     , \p -> writeFile "/tmp/pandoc" (ppShow p) >> pure p
