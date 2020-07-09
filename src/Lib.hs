@@ -5,6 +5,7 @@
 module Lib where
 
 import           CSV
+import           Combinators
 import           Control.Arrow
 import qualified Data.ByteString.Lazy as BS
 import           Data.Foldable
@@ -15,6 +16,15 @@ import qualified Data.Text as T
 import qualified Data.Vector as V
 import           Snippets
 import           Text.Pandoc
+
+
+wrapCodeEnv :: Format -> Text -> Text -> Block -> Block
+wrapCodeEnv format cls div (CodeBlock (ident, attrs, kvs) code)
+  | elem cls attrs
+      = mkEnv format div
+      $ pure
+      $ CodeBlock (ident, filter (/= cls) attrs, kvs) code
+wrapCodeEnv _ _ _ t = t
 
 
 inlineSnippets :: Block -> IO Block

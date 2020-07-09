@@ -22,6 +22,7 @@ main = toJSONFilter $ \(Just format :: Maybe Format) (p :: Pandoc) -> do
   passes p
     [ liftK $ walk $ linkToLatexCmd format "Ann" "ann"
     , liftK $ walk $ prefixCodeToLatexCmd format "law:" "lawname"
+    , liftK $ walk $ wrapCodeEnv format "eqn" "EqnBox"
     , walkM inlineSnippets
     , walkM showCSV
     , walkM emitGhci
