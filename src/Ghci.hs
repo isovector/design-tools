@@ -3,8 +3,8 @@
 
 module Ghci (emitGhci, citeLaw) where
 
-import Combinators
 import           Cache
+import           Combinators
 import           Control.Lens
 import           Data.Bool
 import           Data.Char
@@ -16,6 +16,8 @@ import           Data.Text (Text)
 import qualified Data.Text as T
 import           System.IO.Unsafe
 import           System.Process
+import           Text.Pandoc (readerExtensions, pandocExtensions, def, readMarkdown)
+import           Text.Pandoc.Class (runIOorExplode)
 import           Text.Pandoc.JSON
 
 
@@ -49,6 +51,9 @@ emitGhci :: Block -> IO Block
 emitGhci (CodeBlock (_, _, cs) str)
   | Just file <- lookup "ghci" cs
   = caching (file, str) $ ghciToPandoc (T.unpack file) (T.unpack str)
+emitGhci (CodeBlock (_, _, cs) str)
+  | Just file <- lookup "inject" cs
+  = caching (file, str) $ designHashToPandoc (T.unpack file) (T.unpack str)
 emitGhci (CodeBlock ("", _, cs) str)
   | Just file <- lookup "quickspec" cs
   = caching (file, str) $ fmap snd $ quickspecToPandoc (T.unpack file) (T.unpack str)
@@ -61,6 +66,28 @@ emitGhci (CodeBlock (xid, _, cs) str)
       modifyIORef ref_laws $ M.insert xid mmap
       pure block
 emitGhci x = pure x
+
+
+------------------------------------------------------------------------------
+-- | Run a function defined in the module, parsing its output as markdown
+designHashToPandoc :: FilePath -> String -> IO Block
+designHashToPandoc fp txt = do
+  let hash = hashFile (fp, txt)
+  rs <- runGhci id fp
+      $ unwords
+          ["__designHash"
+          , show txt
+          , show hash
+          , "$"
+          , txt
+          ]
+  case rs of
+    [(_, r)] -> do
+      Pandoc _ p
+        <- runIOorExplode
+         $ readMarkdown def { readerExtensions = pandocExtensions }
+         $ T.pack r
+      pure $ Div mempty p
 
 
 ghciToPandoc :: FilePath -> String -> IO Block

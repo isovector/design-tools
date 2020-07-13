@@ -1,6 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 
-module Cache (caching) where
+module Cache (caching, hashFile) where
 
 import Data.Hashable
 import Data.Maybe
