@@ -48,17 +48,21 @@ citeLaw = \case
 
 
 emitGhci :: Block -> IO Block
-emitGhci (CodeBlock (_, _, cs) str)
-  | Just file <- lookup "ghci" cs
+emitGhci (CodeBlock (_, _, kvs) str)
+  | Just file <- lookup "ghci" kvs
   = caching (file, str) $ ghciToPandoc (T.unpack file) (T.unpack str)
-emitGhci (CodeBlock (_, _, cs) str)
-  | Just file <- lookup "inject" cs
-  = caching (file, str) $ designHashToPandoc (T.unpack file) (T.unpack str)
-emitGhci (CodeBlock ("", _, cs) str)
-  | Just file <- lookup "quickspec" cs
+emitGhci (CodeBlock attr@(_, _, kvs) str)
+  | Just file <- lookup "design" kvs
+  = caching (file, str) $
+      designHashToPandoc
+        attr
+        (T.unpack file) (
+        T.unpack str)
+emitGhci (CodeBlock ("", _, kvs) str)
+  | Just file <- lookup "quickspec" kvs
   = caching (file, str) $ fmap snd $ quickspecToPandoc (T.unpack file) (T.unpack str)
-emitGhci (CodeBlock (xid, _, cs) str)
-  | Just file <- lookup "quickspec" cs
+emitGhci (CodeBlock (xid, _, kvs) str)
+  | Just file <- lookup "quickspec" kvs
   = do
       (mmap, block)
         <- caching (file, str)
@@ -70,12 +74,14 @@ emitGhci x = pure x
 
 ------------------------------------------------------------------------------
 -- | Run a function defined in the module, parsing its output as markdown
-designHashToPandoc :: FilePath -> String -> IO Block
-designHashToPandoc fp txt = do
-  let hash = hashFile (fp, txt)
+designHashToPandoc
+    :: Attr -> FilePath -> String -> IO Block
+designHashToPandoc attr fp txt = do
+  let hash = hashFile (fp, txt, attr)
   rs <- runGhci id fp
       $ unwords
-          ["__designHash"
+          ["__design"
+          , show attr
           , show txt
           , show hash
           , "$"
