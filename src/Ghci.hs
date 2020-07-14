@@ -53,7 +53,7 @@ emitGhci (CodeBlock (_, _, kvs) str)
   = caching (file, str) $ ghciToPandoc (T.unpack file) (T.unpack str)
 emitGhci (CodeBlock attr@(_, _, kvs) str)
   | Just file <- lookup "design" kvs
-  = caching (file, str) $
+  = caching (file, str, attr) $
       designHashToPandoc
         attr
         (T.unpack file) (
