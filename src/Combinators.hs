@@ -33,7 +33,7 @@ defnToLatexEnv :: Format -> Text -> Text -> Block -> Block
 defnToLatexEnv format match with = \case
   DefinitionList [([Str name], bs)]
     | name == match ->
-        mkEnv format with $ join bs
+        mkEnv format with [] $ join bs
   t -> t
 
 
@@ -45,14 +45,17 @@ quoteToDefn match with = \case
   t -> t
 
 
-mkEnv :: Format -> Text -> [Block] -> Block
-mkEnv (Format "latex") env bs =
+mkEnv :: Format -> Text -> [Text] -> [Block] -> Block
+mkEnv (Format "latex") env args bs =
   Div ("", [], []) $ join
     [ pure $ Para [Str ""]
-    , pure . Plain . pure . RawInline (Format "latex") $ "\\begin{" <> env <> "}"
+    , pure . Plain . pure . RawInline (Format "latex") $ "\\begin{" <> env <> "}" <>
+        case args of
+          [] -> ""
+          _ -> "{" <> T.intercalate "}{" args <> "}"
     , bs
     , pure . Plain . pure . RawInline (Format "latex") $ "\\end{" <> env <> "}"
     , pure $ Para [Str ""]
     ]
-mkEnv (Format "epub") env bs = Div ("", [env], []) bs
+mkEnv (Format "epub") env _ bs = Div ("", [env], []) bs
 

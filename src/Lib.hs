@@ -18,13 +18,14 @@ import           Snippets
 import           Text.Pandoc
 
 
-wrapCodeEnv :: Format -> Text -> Text -> Block -> Block
-wrapCodeEnv format cls div (CodeBlock (ident, attrs, kvs) code)
-  | elem cls attrs
-      = mkEnv format div
+wrapCodeEnv :: Format -> Text -> Text -> Maybe Text -> Block -> Block
+wrapCodeEnv format cls div (Just arg) (CodeBlock (ident, attrs, kvs) code)
+  | Just v <- lookup arg kvs
+  , elem cls attrs
+      = mkEnv format div [v]
       $ pure
-      $ CodeBlock (ident, filter (/= cls) attrs, kvs) code
-wrapCodeEnv _ _ _ t = t
+      $ CodeBlock (ident, attrs, kvs) code
+wrapCodeEnv _ _ _ _ t = t
 
 
 inlineSnippets :: Block -> IO Block

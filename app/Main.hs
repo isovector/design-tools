@@ -20,19 +20,20 @@ main :: IO ()
 main = toJSONFilter $ \(Just format :: Maybe Format) (p :: Pandoc) -> do
   hPrint stderr format
   passes p
-    [ liftK $ walk $ linkToLatexCmd format "Ann" "ann"
+    [ \p -> writeFile "/tmp/pandoc_input" (ppShow p) >> pure p
+    , liftK $ walk $ linkToLatexCmd format "Ann" "ann"
     , liftK $ walk $ prefixCodeToLatexCmd format "law:" "lawname"
-    , liftK $ walk $ wrapCodeEnv format "eqn" "EqnBox"
+    , liftK $ walk $ wrapCodeEnv format "haskell" "EqnBox" $ Just "law"
     , walkM inlineSnippets
     , walkM showCSV
     , walkM emitGhci
     , walkM citeLaw
     , fmap pure compress
-    , liftK $ walk $ defnToLatexEnv format "Exercise" "exercise"
-    , liftK $ walk $ defnToLatexEnv format "Exercises" "exercise"
+    -- , liftK $ walk $ defnToLatexEnv format "Exercise" "exercise"
+    -- , liftK $ walk $ defnToLatexEnv format "Exercises" "exercise"
     , liftK $ walk $ quoteToDefn "TODO(sandy):" "TODO"
     , runIOorExplode . walkM (writeLatexDeathNotes format)
-    , \p -> writeFile "/tmp/pandoc" (ppShow p) >> pure p
+    , \p -> writeFile "/tmp/pandoc_output" (ppShow p) >> pure p
     ]
 
 
