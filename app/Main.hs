@@ -3,6 +3,8 @@
 
 module Main where
 
+import Data.Char hiding (Format, Space)
+import qualified Data.Text as T
 import Ghci
 import Combinators
 import KEndo
@@ -24,6 +26,7 @@ main = toJSONFilter $ \(Just format :: Maybe Format) (p :: Pandoc) -> do
     , liftK $ walk $ linkToLatexCmd format "Ann" "ann"
     , liftK $ walk $ prefixCodeToLatexCmd format "law:" "lawname"
     , liftK $ walk $ wrapCodeEnv format "haskell" "EqnBox" $ Just "law"
+    , liftK $ walk $ noIndent format
     , walkM inlineSnippets
     , walkM showCSV
     , walkM emitGhci
@@ -48,6 +51,14 @@ compress (Pandoc meta blocks) = Pandoc meta $ go blocks
               : cs
     go (x : xs) = x : go xs
     go [] = []
+
+
+noIndent :: Format -> Block -> Block
+noIndent (Format "latex") p@(Para pc@(Str str : _)) =
+  case fmap isLower $ T.unpack $ T.take 1 str of
+    [True] -> Para $ RawInline (Format "latex") "\\noindent" : Space : pc
+    _ -> p
+noIndent _ p = p
 
 
 passes :: Pandoc -> [Pandoc -> IO Pandoc] -> IO Pandoc
