@@ -146,6 +146,8 @@ responses f
   . groupBy (\_ a -> not $ isResponse a)
   . drop 1
   . dropWhile (not . isPrefixOf "Ok, ")
+  . drop 1
+  . dropWhile (not . isPrefixOf "Ok, ")
   . lines
 
 
