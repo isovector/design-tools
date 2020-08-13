@@ -19,6 +19,7 @@ import           System.Process
 import           Text.Pandoc (readerExtensions, pandocExtensions, def, readMarkdown)
 import           Text.Pandoc.Class (runIOorExplode)
 import           Text.Pandoc.JSON
+import Data.Monoid
 
 
 ref_laws :: IORef (M.Map Text (M.Map Text Int))
@@ -53,27 +54,37 @@ citeLaw = \case
   t -> pure t
 
 
+doReplace :: Maybe Text -> String -> String
+doReplace = appEndo . maybe mempty parseReplace
+
+parseReplace :: Text -> Endo String
+parseReplace x =
+  flip foldMap (T.split (== '|') x) $ \t ->
+    case T.split (== '=') t of
+      [lhs, rhs] -> Endo $ T.unpack . T.replace lhs rhs . T.pack
+      _ -> error $ "invalid replace string: " <> T.unpack t
 
 emitGhci :: Block -> IO Block
 emitGhci (CodeBlock (_, _, kvs) str)
   | Just file <- lookup "ghci" kvs
-  = caching (file, str) $ ghciToPandoc (T.unpack file) (T.unpack str)
+  = caching (file, str, kvs) $ ghciToPandoc kvs (T.unpack file) (T.unpack str)
 emitGhci (CodeBlock attr@(_, _, kvs) str)
   | Just file <- lookup "design" kvs
-  = caching (file, str, attr) $
+  = caching (file, str, attr, kvs) $
       designHashToPandoc
+        kvs
         attr
         (T.unpack file) (
         T.unpack str)
 emitGhci (CodeBlock ("", _, kvs) str)
   | Just file <- lookup "quickspec" kvs
-  = caching (file, str) $ fmap snd $ quickspecToPandoc (T.unpack file) (T.unpack str)
+  = caching (file, str, kvs) $ fmap snd $ quickspecToPandoc kvs (T.unpack file) (T.unpack str)
 emitGhci (CodeBlock (xid, _, kvs) str)
   | Just file <- lookup "quickspec" kvs
   = do
       (mmap, block)
-        <- caching (file, str)
-         $ quickspecToPandoc (T.unpack file) (T.unpack str)
+        <- caching (file, str, kvs)
+         $ quickspecToPandoc kvs (T.unpack file) (T.unpack str)
       modifyIORef ref_laws $ M.insert xid mmap
       pure block
 emitGhci x = pure x
@@ -82,10 +93,10 @@ emitGhci x = pure x
 ------------------------------------------------------------------------------
 -- | Run a function defined in the module, parsing its output as markdown
 designHashToPandoc
-    :: Attr -> FilePath -> String -> IO Block
-designHashToPandoc attr fp txt = do
+    :: [(Text, Text)] -> Attr -> FilePath -> String -> IO Block
+designHashToPandoc kvs attr fp txt = do
   let hash = hashFile (fp, txt, attr)
-  rs <- runGhci id fp
+  rs <- runGhci kvs id fp
       $ unwords
           ["__design"
           , show attr
@@ -103,13 +114,13 @@ designHashToPandoc attr fp txt = do
       pure $ Div mempty p
 
 
-ghciToPandoc :: FilePath -> String -> IO Block
-ghciToPandoc fp = fmap format . runGhci id fp
+ghciToPandoc :: [(Text, Text)] -> FilePath -> String -> IO Block
+ghciToPandoc kvs fp = fmap format . runGhci kvs id fp
 
-quickspecToPandoc :: FilePath -> String -> IO (M.Map Text Int, Block)
-quickspecToPandoc fp s = do
+quickspecToPandoc :: [(Text, Text)] -> FilePath -> String -> IO (M.Map Text Int, Block)
+quickspecToPandoc kvs fp s = do
   info@[(_, laws)]
-    <- runGhci (drop 1 . dropWhile (not . isPrefixOf "== Laws ==")) fp s
+    <- runGhci kvs (drop 1 . dropWhile (not . isPrefixOf "== Laws ==")) fp s
   pure (parseLaws laws, format info)
 
 
@@ -138,9 +149,9 @@ format
   . fmap (\(req, resp) -> unlines ["> " ++ req, resp])
 
 
-runGhci :: ([String] -> [String]) -> FilePath -> String -> IO [(String, String)]
-runGhci f fp str
-  = fmap (zip (lines str) . responses f)
+runGhci :: [(Text, Text)] -> ([String] -> [String]) -> FilePath -> String -> IO [(String, String)]
+runGhci kvs f fp str
+  = fmap (zip (lines str) . responses f . doReplace (lookup "replace" kvs))
   . readProcess "stack" ["repl"]
   $ unlines [":l " ++ fp, str]
 
