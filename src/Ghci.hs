@@ -26,8 +26,15 @@ ref_laws = unsafePerformIO $ newIORef mempty
 {-# NOINLINE ref_laws #-}
 
 
+unencodeHtml :: Text -> Text
+unencodeHtml
+  = T.replace "%20" " "
+  . T.replace "%3C" "<"
+  . T.replace "%3E" ">"
+
+
 lookupLawRef :: Text -> Text -> IO Int
-lookupLawRef xid (T.replace "%20" " " -> law) = do
+lookupLawRef xid (unencodeHtml -> law) = do
   laws <- readIORef ref_laws
   case M.lookup xid laws of
     Just lawm ->
