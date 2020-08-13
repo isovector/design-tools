@@ -31,6 +31,7 @@ main = toJSONFilter $ \(Just format :: Maybe Format) (p :: Pandoc) -> do
     , walkM showCSV
     , walkM emitGhci
     , walkM citeLaw
+    , liftK $ walk stripCodeTail
     , fmap pure compress
     -- , liftK $ walk $ defnToLatexEnv format "Exercise" "exercise"
     -- , liftK $ walk $ defnToLatexEnv format "Exercises" "exercise"
@@ -59,6 +60,11 @@ noIndent (Format "latex") p@(Para pc@(Str str : _)) =
     [True] -> Para $ RawInline (Format "latex") "\\noindent" : Space : pc
     _ -> p
 noIndent _ p = p
+
+
+stripCodeTail :: Block -> Block
+stripCodeTail (CodeBlock a t) = CodeBlock a $ T.stripEnd t <> "\n"
+stripCodeTail b = b
 
 
 passes :: Pandoc -> [Pandoc -> IO Pandoc] -> IO Pandoc
