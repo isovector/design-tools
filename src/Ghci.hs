@@ -32,6 +32,7 @@ unencodeHtml
   = T.replace "%20" " "
   . T.replace "%3C" "<"
   . T.replace "%3E" ">"
+  . T.replace "%7C" "|"
 
 
 lookupLawRef :: Text -> Text -> IO Int
