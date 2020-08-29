@@ -27,6 +27,7 @@ main = toJSONFilter $ \(Just format :: Maybe Format) (p :: Pandoc) -> do
     , liftK $ walk $ prefixCodeToLatexCmd format "law:" "lawname"
     , liftK $ walk $ wrapCodeEnv format "haskell" "EqnBox" $ Just "law"
     , liftK $ walk $ noIndent format
+    , liftK $ walk $ fixImages format
     , walkM inlineSnippets
     , walkM showCSV
     , walkM emitGhci
@@ -39,6 +40,12 @@ main = toJSONFilter $ \(Just format :: Maybe Format) (p :: Pandoc) -> do
     , runIOorExplode . walkM (writeLatexDeathNotes format)
     , \p -> writeFile "/tmp/pandoc_output" (ppShow p) >> pure p
     ]
+
+
+-- | Epub gets built in the wrong directory so this hack fixes that
+fixImages :: Format -> Inline -> Inline
+fixImages (Format "epub") (Image a b (c, d)) = Image a b ("build/" <> c, d)
+fixImages _ t = t
 
 
 compress :: Pandoc -> Pandoc
