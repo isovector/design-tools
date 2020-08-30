@@ -14,6 +14,7 @@ import Text.Pandoc.Walk
 import DeathNotes
 import Text.Pandoc
 import System.IO
+import Data.List
 
 import Text.Show.Pretty
 
@@ -33,6 +34,7 @@ main = toJSONFilter $ \(Just format :: Maybe Format) (p :: Pandoc) -> do
     , walkM emitGhci
     , walkM citeLaw
     , liftK $ walk stripCodeTail
+    , liftK $ walk $ ebookCode format
     , fmap pure compress
     -- , liftK $ walk $ defnToLatexEnv format "Exercise" "exercise"
     -- , liftK $ walk $ defnToLatexEnv format "Exercises" "exercise"
@@ -67,6 +69,37 @@ noIndent (Format "latex") p@(Para pc@(Str str : _)) =
     [True] -> Para $ RawInline (Format "latex") "\\noindent" : Space : pc
     _ -> p
 noIndent _ p = p
+
+
+ebookCode :: Format -> Block -> Block
+ebookCode (Format "epub") (CodeBlock _ str) = RawBlock (Format "html") $ mconcat
+  [ "<pre>"
+  , T.pack $ replaceEbookCode $ T.unpack str
+  , "</pre>"
+  ]
+ebookCode _ p = p
+
+replaceEbookCode :: String -> String
+replaceEbookCode [] = []
+replaceEbookCode s
+  | Just s' <- stripPrefix "-- .via " s
+  = let (z, s'') = span (/= '\n') s'
+     in mconcat
+          [ "<span class=\"annotate\"><span class=\"fill\"></span><span class=\"annotated\">(via <span class=\"lawname\">"
+          , z
+          , "</span>)</span></span>"
+          , replaceEbookCode s''
+          ]
+  | Just s' <- stripPrefix "-- ! " s
+  = let (z, s'') = span (not . isSpace) s'
+     in mconcat
+          [ "<span class=\"annotate\"><span class=\"fill\"></span><span class=\"annotated\">"
+          , pure $ toEnum $ fromEnum '\10102' + read z - 1
+          , "</span></span>"
+          , replaceEbookCode s''
+          ]
+replaceEbookCode (c:s) = c : replaceEbookCode s
+
 
 
 stripCodeTail :: Block -> Block
