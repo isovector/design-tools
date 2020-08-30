@@ -57,5 +57,6 @@ mkEnv (Format "latex") env args bs =
     , pure . Plain . pure . RawInline (Format "latex") $ "\\end{" <> env <> "}"
     , pure $ Para [Str ""]
     ]
-mkEnv (Format "epub") env _ bs = Div ("", [env], []) bs
+mkEnv (Format "epub") env args bs =
+  Div ("", [env], zipWith (\ix arg -> ("data-arg" <> T.pack (show ix), arg)) [1..] args) bs
 
