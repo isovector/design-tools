@@ -76,7 +76,7 @@ noIndent _ p = p
 ebookCode :: Format -> Block -> Block
 ebookCode (Format "epub") (CodeBlock _ str) = RawBlock (Format "html") $ mconcat
   [ "<pre>"
-  , T.pack $ replaceEbookCode $ T.unpack str
+  , T.pack $ replaceEbookCode $ stringToHtmlString $ T.unpack str
   , "</pre>"
   ]
 ebookCode _ p = p
@@ -102,6 +102,16 @@ replaceEbookCode s
           ]
 replaceEbookCode (c:s) = c : replaceEbookCode s
 
+-- from https://www.stackage.org/haddock/lts-16.13/xhtml-3000.2.2.1/src/Text-XHtml-Internals.html
+stringToHtmlString :: String -> String
+stringToHtmlString = concatMap fixChar
+  where
+    fixChar '<' = "&lt;"
+    fixChar '>' = "&gt;"
+    fixChar '&' = "&amp;"
+    fixChar '"' = "&quot;"
+    fixChar c | ord c < 0x80 = [c]
+    fixChar c = "&#" ++ show (ord c) ++ ";"
 
 
 stripCodeTail :: Block -> Block
