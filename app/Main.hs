@@ -29,6 +29,8 @@ main = toJSONFilter $ \(Just format :: Maybe Format) (p :: Pandoc) -> do
     , liftK $ walk $ wrapCodeEnv format "haskell" "EqnBox" $ Just "law"
     , liftK $ walk $ noIndent format
     , liftK $ walk $ fixImages format
+    , liftK $ walk $ defnToLatexEnv format "FlushRight" "flushright"
+    , liftK $ walk $ br format "sdcp:br"
     , walkM inlineSnippets
     , walkM showCSV
     , walkM emitGhci

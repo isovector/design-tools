@@ -14,6 +14,15 @@ codeToLatexCmd format match cmd = \case
   Code _ (match -> Just t) -> mkInline format cmd t
   t -> t
 
+br :: Format -> Text -> Inline -> Inline
+br format match = \case
+  Code _ ((== match) -> True) ->
+    case format of
+      Format "latex" -> RawInline format "\\\\"
+      Format "epub"  -> RawInline format "<br/>"
+      _              -> error "unknown format when producing <br>"
+  t -> t
+
 prefixCodeToLatexCmd :: Format -> Text -> Text -> Inline -> Inline
 prefixCodeToLatexCmd format prefix = codeToLatexCmd format (T.stripPrefix prefix)
 
