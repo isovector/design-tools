@@ -10,8 +10,10 @@ import           Data.Bool
 import           Data.Char
 import           Data.IORef
 import           Data.List
+import           Data.Maybe (fromMaybe)
 import           Data.Map (Map)
 import qualified Data.Map as M
+import           Data.Monoid
 import           Data.Text (Text)
 import qualified Data.Text as T
 import           System.IO.Unsafe
@@ -19,7 +21,6 @@ import           System.Process
 import           Text.Pandoc (readerExtensions, pandocExtensions, def, readMarkdown)
 import           Text.Pandoc.Class (runIOorExplode)
 import           Text.Pandoc.JSON
-import Data.Monoid
 
 
 ref_laws :: IORef (M.Map Text (M.Map Text Int))
@@ -71,8 +72,10 @@ emitGhci (CodeBlock (_, _, kvs) str)
   = caching (file, str, kvs) $ ghciToPandoc kvs (T.unpack file) (T.unpack str)
 emitGhci (CodeBlock attr@(_, _, kvs) str)
   | Just file <- lookup "design" kvs
-  = caching (file, str, attr, kvs) $
+  = caching (file, str, attr, kvs) $ do
+      let fn = fromMaybe "__design" $ lookup "fn" kvs
       designHashToPandoc
+        (T.unpack fn)
         kvs
         attr
         (T.unpack file) (
@@ -94,12 +97,12 @@ emitGhci x = pure x
 ------------------------------------------------------------------------------
 -- | Run a function defined in the module, parsing its output as markdown
 designHashToPandoc
-    :: [(Text, Text)] -> Attr -> FilePath -> String -> IO Block
-designHashToPandoc kvs attr fp txt = do
+    :: String -> [(Text, Text)] -> Attr -> FilePath -> String -> IO Block
+designHashToPandoc fn kvs attr fp txt = do
   let hash = hashFile (fp, txt, attr)
   rs <- runGhci kvs id fp
       $ unwords
-          ["__design"
+          [ fn
           , show attr
           , show txt
           , show hash
