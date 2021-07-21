@@ -116,6 +116,7 @@ designHashToPandoc fn kvs attr fp txt = do
          $ readMarkdown def { readerExtensions = pandocExtensions }
          $ T.pack r
       pure $ Div mempty p
+    x -> error $ show x
 
 
 ghciToPandoc :: [(Text, Text)] -> FilePath -> String -> IO Block
@@ -167,8 +168,6 @@ responses f
   . fmap f
   . fmap (_head %~ removeManyTags)
   . groupBy (\_ a -> not $ isResponse a)
-  . drop 1
-  . dropWhile (not . isPrefixOf "Ok, ")
   . drop 1
   . dropWhile (not . isPrefixOf "Ok, ")
   . lines
