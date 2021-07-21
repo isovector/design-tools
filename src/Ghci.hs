@@ -156,7 +156,7 @@ format
 runGhci :: [(Text, Text)] -> ([String] -> [String]) -> FilePath -> String -> IO [(String, String)]
 runGhci kvs f fp str
   = fmap (zip (lines $ replace str) . responses f . replace)
-  . readProcess "stack" ["repl"]
+  . readProcess "stack" ["repl", "--no-load"]
   $ unlines [":l " ++ fp, str]
  where replace = doReplace $ lookup "replace" kvs
 
