@@ -100,23 +100,20 @@ designHashToPandoc
     :: String -> [(Text, Text)] -> Attr -> FilePath -> String -> IO Block
 designHashToPandoc fn kvs attr fp txt = do
   let hash = hashFile (fp, txt, attr)
-  rs <- runGhci kvs id fp
+  r <- runGhciVal fp
       $ unwords
           [ fn
           , show attr
           , show txt
           , show hash
-          , "$"
-          , txt
+          , "$\n"
+          , unlines $ fmap (mappend "    ") $ lines txt
           ]
-  case rs of
-    [(_, r)] -> do
-      Pandoc _ p
-        <- runIOorExplode
-         $ readMarkdown def { readerExtensions = pandocExtensions }
-         $ T.pack r
-      pure $ Div mempty p
-    x -> error $ show x
+  Pandoc _ p
+    <- runIOorExplode
+      $ readMarkdown def { readerExtensions = pandocExtensions }
+      $ T.pack r
+  pure $ Div mempty p
 
 
 ghciToPandoc :: [(Text, Text)] -> FilePath -> String -> IO Block
@@ -161,6 +158,22 @@ runGhci kvs f fp str
   $ unlines [":l " ++ fp, str]
  where replace = doReplace $ lookup "replace" kvs
 
+runGhciVal :: FilePath -> String -> IO String
+runGhciVal fp str
+  = fmap (valResponse $ length $ lines str)
+  . readProcess "stack" ["repl", "--no-load"]
+  $ unlines [":l " ++ fp, ":{", str, ":}"]
+
+
+valResponse :: Int -> String -> String
+valResponse n
+  = unwords
+  . drop (n + 3)
+  . words
+  . head
+  . drop 1
+  . dropWhile (not . isPrefixOf "Ok, ")
+  . lines
 
 responses :: ([String] -> [String]) -> String -> [String]
 responses f
