@@ -125,7 +125,7 @@ ghciToPandoc kvs fp = fmap format . runGhci kvs id fp
 
 quickspecToPandoc :: [(Text, Text)] -> FilePath -> String -> IO (M.Map Text Int, Block)
 quickspecToPandoc kvs fp s = do
-  info@[(_, laws)]
+  info@[(_, Just laws)]
     <- runGhci kvs (drop 1 . dropWhile (not . isPrefixOf "== Laws ==")) fp s
   pure (parseLaws laws, format info)
 
@@ -147,15 +147,18 @@ parseLaws
        in (T.pack s'', num)
 
 
-format :: [(String, String)] -> Block
+format :: [(String, Maybe String)] -> Block
 format
   = CodeBlock ("", ["haskell", "ghci"], [])
   . T.pack
   . unlines
-  . fmap (\(req, resp) -> unlines ["> " ++ req, resp])
+  . fmap (\case
+            (req, Just resp) -> unlines ["> " ++ req, resp]
+            (req, Nothing) -> unlines ["> " ++ req]
+         )
 
 
-runGhci :: [(Text, Text)] -> ([String] -> [String]) -> FilePath -> String -> IO [(String, String)]
+runGhci :: [(Text, Text)] -> ([String] -> [String]) -> FilePath -> String -> IO [(String, Maybe String)]
 runGhci kvs f fp str
   = fmap (interleave replace (lines $ replace str) . responses f . replace)
   . readProcess "stack" ["repl", "--no-load"]
@@ -220,7 +223,7 @@ isSilent str
 ------------------------------------------------------------------------------
 -- | Zip input lines to GHCI with responses from GHCI. Correctly deals with
 -- input like @let x = 5@ which doesn't give a response.
-interleave :: (String -> String) -> [String] -> [String] -> [(String, String)]
+interleave :: (String -> String) -> [String] -> [String] -> [(String, Maybe String)]
 interleave f as
   = filter (not . null . fst)
   . zipping
@@ -228,9 +231,9 @@ interleave f as
       (\a ->
         let a' = f a
          in if isReallySilent a'
-               then ("", "")
-               else (a', ""))
-      (\a b -> (f a, initNonEmpty $ f b))
+               then ("", Nothing)
+               else (a', Nothing))
+      (\a b -> (f a, Just $ initNonEmpty $ f b))
       (fmap (dropWhile isSpace . f) as)
 
 
