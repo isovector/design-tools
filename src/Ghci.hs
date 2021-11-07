@@ -208,7 +208,7 @@ removeManyTags ts = bool ts (removeManyTags $ removeTag ts) $ isResponse ts
 
 isResponse :: String -> Bool
 isResponse ('*':_) = True
-isResponse _ = False
+isResponse x = isPrefixOf "ghci>" x
 
 
 isSilent :: String -> Bool
