@@ -148,14 +148,26 @@ parseLaws
 
 
 format :: [(String, Maybe String)] -> Block
-format
-  = CodeBlock ("", ["haskell", "ghci"], [])
+format xs
+  = CodeBlock ( ""
+              , bool ["ghci"]
+                     ["haskell", "ghci"]
+                  $ not
+                  $ containsError
+                  $ show xs
+              , []
+              )
   . T.pack
   . unlines
   . fmap (\case
             (req, Just resp) -> unlines ["> " ++ req, resp]
             (req, Nothing) -> unlines ["> " ++ req]
          )
+  $ xs
+
+
+containsError :: String -> Bool
+containsError = isInfixOf "<interactive>"
 
 
 runGhci :: [(Text, Text)] -> ([String] -> [String]) -> FilePath -> String -> IO [(String, Maybe String)]
