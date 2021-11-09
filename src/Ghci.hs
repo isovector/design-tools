@@ -161,14 +161,14 @@ format
 runGhci :: [(Text, Text)] -> ([String] -> [String]) -> FilePath -> String -> IO [(String, Maybe String)]
 runGhci kvs f fp str
   = fmap (interleave replace (lines $ replace str) . responses f . replace)
-  . readProcess "stack" ["repl", "--no-load"]
+  . readProcess' "stack" ["repl", "--no-load"]
   $ unlines [":l " ++ fp, unlines $ fmap removeSilent $ lines $ str]
  where replace = doReplace $ lookup "replace" kvs
 
 runGhciVal :: FilePath -> String -> IO String
 runGhciVal fp str
   = fmap (valResponse $ length $ lines str)
-  . readProcess "stack" ["repl", "--no-load"]
+  . readProcess' "stack" ["repl", "--no-load"]
   $ unlines [":l " ++ fp, ":{", str, ":}"]
 
 
@@ -259,4 +259,7 @@ zipping _ _ _ [] _ = []
 zipping _ _ _ _ [] = []
 zipping p d f (a:as) bs | p a = d a   : zipping p d f as bs
 zipping p d f (a:as) (b:bs)   = f a b : zipping p d f as bs
+
+readProcess' :: String -> [String] -> String -> IO String
+readProcess' cmd args = readCreateProcess $ shell $ intercalate " " (cmd : args) <> " 2>&1"
 
