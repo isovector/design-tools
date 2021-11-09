@@ -30,20 +30,25 @@ wrapCodeEnv _ _ _ _ t = t
 
 inlineSnippets :: Block -> IO Block
 inlineSnippets = \case
-  Para [Link _ (Strs t) ("Snip", _)]  -> runSnippet t
-  Plain [Link _ (Strs t) ("Snip", _)] -> runSnippet t
+  Para [Link (_, _, kvs) (Strs t) ("Snip", _)]  -> runSnippet t kvs
+  Plain [Link (_, _, kvs) (Strs t) ("Snip", _)] -> runSnippet t kvs
   t -> pure t
 
   where
-    runSnippet :: Text -> IO Block
-    runSnippet args = do
+    runSnippet :: Text -> [(Text, Text)] -> IO Block
+    runSnippet args kvs = do
       (fp : more_args) <- pure $ splitArgs args
-      snippet (T.unpack fp) $ fmap fst $ uncons more_args
+      snippet (T.unpack fp) kvs $ fmap fst $ uncons more_args
 
-    snippet :: FilePath -> Maybe Text -> IO Block
-    snippet fp defn = do
+    snippet :: FilePath -> [(Text, Text)] -> Maybe Text -> IO Block
+    snippet fp kvs defn = do
       file <- readFile fp
-      pure $ codeBlock $ T.pack $ getDefinition fp file $ fmap T.unpack defn
+      pure
+        $ codeBlock
+        $ flip (foldr (uncurry T.replace)) kvs
+        $ T.pack
+        $ getDefinition fp file
+        $ fmap T.unpack defn
 
 
 showCSV :: Block -> IO Block
