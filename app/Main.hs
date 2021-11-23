@@ -25,6 +25,7 @@ main = toJSONFilter $ \(Just format :: Maybe Format) (p :: Pandoc) -> do
   passes p
     [ \p -> writeFile "/tmp/pandoc_input" (ppShow p) >> pure p
     , liftK $ walk $ linkToLatexCmd format "Ann" "ann"
+    , liftK $ walk $ headerClassAppend format "rev2" "red"
     , liftK $ walk $ prefixCodeToLatexCmd format "law:" "lawname"
     , liftK $ walk $ wrapCodeEnv format "haskell" "EqnBox" $ Just "law"
     , liftK $ walk $ noIndent format

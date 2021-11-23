@@ -18,6 +18,16 @@ import           Snippets
 import           Text.Pandoc
 
 
+
+headerClassAppend :: Format -> Text -> Text -> Block -> Block
+headerClassAppend format cls color (Header n (ident, attrs, kvs) contents)
+  | elem cls attrs
+  = Header n (ident, attrs, kvs)
+  $ RawInline (Format "latex") ("{\\color{" <> color <> "!100!black}")
+  : contents <> [RawInline (Format "latex") "}"]
+headerClassAppend _ _ _ x = x
+
+
 wrapCodeEnv :: Format -> Text -> Text -> Maybe Text -> Block -> Block
 wrapCodeEnv format cls div (Just arg) (CodeBlock (ident, attrs, kvs) code)
   | Just v <- lookup arg kvs
