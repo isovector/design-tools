@@ -24,23 +24,33 @@ main = toJSONFilter $ \(Just format :: Maybe Format) (p :: Pandoc) -> do
   hPrint stderr format
   passes p
     [ \p -> writeFile "/tmp/pandoc_input" (ppShow p) >> pure p
+    , \p -> hPutStrLn stderr "anns" >> pure p
     , liftK $ walk $ linkToLatexCmd format "Ann" "ann"
+    , \p -> hPutStrLn stderr "rev2" >> pure p
     , liftK $ walk $ headerClassAppend format "rev2" "red"
+    , \p -> hPutStrLn stderr "laws" >> pure p
     , liftK $ walk $ prefixCodeToLatexCmd format "law:" "lawname"
+    , \p -> hPutStrLn stderr "eqnbox" >> pure p
     , liftK $ walk $ wrapCodeEnv format "haskell" "EqnBox" $ Just "law"
+    , \p -> hPutStrLn stderr "noindent" >> pure p
     , liftK $ walk $ noIndent format
+    , \p -> hPutStrLn stderr "fix imgs" >> pure p
     , liftK $ walk $ fixImages format
+    , \p -> hPutStrLn stderr "defns to laws" >> pure p
     , liftK $ walk $ defnToLatexEnv format "FlushRight" "flushright"
+    , \p -> hPutStrLn stderr "br" >> pure p
     , liftK $ walk $ br format "sdcp:br"
+    , \p -> hPutStrLn stderr "inline snippets" >> pure p
     , walkM inlineSnippets
-    , walkM showCSV
+    , \p -> hPutStrLn stderr "do ghci" >> pure p
     , walkM emitGhci
-    , walkM citeLaw
+    , \p -> hPutStrLn stderr "strip code" >> pure p
     , liftK $ walk stripCodeTail
+    , \p -> hPutStrLn stderr "ebook" >> pure p
     , liftK $ walk $ ebookCode format
     , fmap pure compress
-    -- , liftK $ walk $ defnToLatexEnv format "Exercise" "exercise"
-    -- , liftK $ walk $ defnToLatexEnv format "Exercises" "exercise"
+    , liftK $ walk $ defnToLatexEnv format "Exercise" "exercise"
+    , liftK $ walk $ defnToLatexEnv format "Exercises" "exercise"
     , liftK $ walk $ quoteToDefn "TODO(sandy):" "TODO"
     , runIOorExplode . walkM (writeLatexDeathNotes format)
     , \p -> writeFile "/tmp/pandoc_output" (ppShow p) >> pure p

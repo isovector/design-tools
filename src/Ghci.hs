@@ -4,6 +4,7 @@
 
 module Ghci (emitGhci, citeLaw) where
 
+import System.IO
 import           Cache
 import           Control.Lens
 import           Data.Bool
@@ -104,8 +105,8 @@ designHashToPandoc
     :: String -> [(Text, Text)] -> Attr -> FilePath -> String -> IO Block
 designHashToPandoc fn _ attr fp txt = do
   let hash = hashFile (fp, txt, attr)
-  r <- runGhciVal fp
-      $ unwords
+  let cmds =
+        unwords
           [ fn
           , show attr
           , show txt
@@ -113,6 +114,9 @@ designHashToPandoc fn _ attr fp txt = do
           , "$\n"
           , unlines $ fmap (mappend "    ") $ lines txt
           ]
+  writeFile "/tmp/wtf.hs" cmds
+  r <- runGhciVal fp cmds
+  hPutStrLn stderr r
   Pandoc _ p
     <- runIOorExplode
       $ readMarkdown def { readerExtensions = pandocExtensions }
@@ -171,10 +175,11 @@ containsError = isInfixOf "<interactive>"
 
 
 runGhci :: [(Text, Text)] -> ([String] -> [String]) -> FilePath -> String -> IO [(String, Maybe String)]
-runGhci kvs f fp str
-  = fmap (interleave replace (lines $ replace str) . responses f . replace)
-  . readProcess' "stack" ["repl", "--no-load"]
-  $ unlines [":l " ++ fp, unlines $ fmap removeSilent $ lines $ str]
+runGhci kvs f fp str = do
+  hPrint stderr str
+  fmap (interleave replace (lines $ replace str) . responses f . replace)
+    . readProcess' "stack" ["repl", "--no-load"]
+    $ unlines [":l " ++ fp, unlines $ fmap removeSilent $ lines $ str]
  where replace = doReplace $ lookup "replace" kvs
 
 runGhciVal :: FilePath -> String -> IO String
