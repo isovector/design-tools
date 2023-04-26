@@ -24,6 +24,8 @@ main = toJSONFilter $ \(Just format :: Maybe Format) (p :: Pandoc) -> do
   hPrint stderr format
   passes p
     [ \p -> writeFile "/tmp/pandoc_input" (ppShow p) >> pure p
+    , \p -> hPutStrLn stderr "agdamode" >> pure p
+    , liftK $ walk $ linkToLatexCmd format "AgdaMode" "agdamode"
     , \p -> hPutStrLn stderr "agdacmds" >> pure p
     , liftK $ walk $ linkToLatexCmd format "AgdaCmd" "agdacmd"
     , \p -> hPutStrLn stderr "anns" >> pure p
