@@ -34,10 +34,16 @@ linkToLatexCmd format match with = \case
     | match == name -> mkInline format with t
   t -> t
 
+escapeLatex :: Text -> Text
+escapeLatex
+  = T.replace "~" "\\sim"
+  . T.replace "_" "\\textunderscore"
+  . T.replace "^" "\\textasciicircum"
+
 mkInline :: Format -> Text -> Text -> Inline
 mkInline (Format "epub") cls content = Span ("", [cls], []) [Str content]
 mkInline (Format "latex") cls content =
-  RawInline (Format "latex") $ "\\" <> cls <> "{" <> content <> "}"
+  RawInline (Format "latex") $ "\\" <> cls <> "{" <> escapeLatex content <> "}"
 
 defnToLatexEnv :: Format -> Text -> Text -> Block -> Block
 defnToLatexEnv format match with = \case
