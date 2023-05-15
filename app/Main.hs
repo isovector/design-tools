@@ -41,6 +41,8 @@ main = toJSONFilter $ \(Just format :: Maybe Format) (p :: Pandoc) -> do
     , liftK $ walk $ noIndent format
     , \p -> hPutStrLn stderr "fix imgs" >> pure p
     , liftK $ walk $ fixImages format
+    , \p -> hPutStrLn stderr "hidden" >> pure p
+    , liftK $ walk $ defnToLatexEnv format "Hidden" "hidden"
     , \p -> hPutStrLn stderr "defns to laws" >> pure p
     , liftK $ walk $ defnToLatexEnv format "FlushRight" "flushright"
     , \p -> hPutStrLn stderr "br" >> pure p
