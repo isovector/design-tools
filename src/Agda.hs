@@ -120,10 +120,13 @@ emacsAllKeys c
 agdaCmdInvocToInline :: Format -> AgdaCmdInvocation -> Inline
 agdaCmdInvocToInline f cmd = Span ("", [], []) $
   [ mkInline f "AgdaCmd" $ T.pack $ drop 7 $ show $ ac_cmd cmd
-  , mkInline f "AgdaEmacsInput" $ emacsAllKeys cmd
   ] <>
-  [ mkInline f "AgdaCmdArg" arg
+  [ case arg of
+     "" -> mkInline f "AgdaCmdNoArg" ""
+     _  -> mkInline f "AgdaCmdArg"   arg
   | Just arg <- [ac_arg cmd]
+  ] <>
+  [ mkInline f "AgdaEmacsInput" $ emacsAllKeys cmd
   ]
 
 
