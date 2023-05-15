@@ -29,6 +29,8 @@ main = toJSONFilter $ \(Just format :: Maybe Format) (p :: Pandoc) -> do
     , liftK $ walk $ linkToLatexCmd format "AgdaMode" "agdamode"
     , \p -> hPutStrLn stderr "agdacmds" >> pure p
     , liftK $ walk $ agdaCmd format
+    , \p -> hPutStrLn stderr "info" >> pure p
+    , liftK $ walk $ codeToEnv format "info" "AgdaInfo"
     , \p -> hPutStrLn stderr "anns" >> pure p
     , liftK $ walk $ linkToLatexCmd format "Ann" "ann"
     , \p -> hPutStrLn stderr "rev2" >> pure p

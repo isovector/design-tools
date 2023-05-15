@@ -52,6 +52,13 @@ defnToLatexEnv format match with = \case
         mkEnv format with [] $ join bs
   t -> t
 
+-- codeBlockToEnv :: Format -> Text -> Text -> Block -> Block
+-- defnToLatexEnv format match with = \case
+--   DefinitionList [([Str name], bs)]
+--     | name == match ->
+--         mkEnv format with [] $ join bs
+--   t -> t
+
 
 quoteToDefn :: Text -> Text -> Block -> Block
 quoteToDefn match with = \case

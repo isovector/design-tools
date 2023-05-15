@@ -38,6 +38,14 @@ wrapCodeEnv format cls div (Just arg) (CodeBlock (ident, attrs, kvs) code)
       $ CodeBlock (ident, attrs, kvs) code
 wrapCodeEnv _ _ _ _ t = t
 
+codeToEnv :: Format -> Text -> Text -> Block -> Block
+codeToEnv format from to (CodeBlock (ident, attrs, kvs) code)
+  | elem from attrs
+    = mkEnv format to []
+    $ pure
+    $ CodeBlock (ident, attrs, kvs) code
+codeToEnv _ _ _ t = t
+
 
 inlineSnippets :: Block -> IO Block
 inlineSnippets = \case
