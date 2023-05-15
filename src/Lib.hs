@@ -46,6 +46,12 @@ codeToEnv format from to (CodeBlock (ident, attrs, kvs) code)
     $ CodeBlock (ident, attrs, kvs) code
 codeToEnv _ _ _ t = t
 
+renameCode :: Format -> Text -> Text -> Block -> Block
+renameCode format from to (CodeBlock (ident, attrs, kvs) code)
+  | elem from attrs
+  = CodeBlock (ident, to : filter (/= from) attrs, kvs) code
+renameCode _ _ _ t = t
+
 
 inlineSnippets :: Block -> IO Block
 inlineSnippets = \case
