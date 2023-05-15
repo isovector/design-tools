@@ -30,7 +30,7 @@ prefixCodeToLatexCmd format prefix = codeToLatexCmd format (T.stripPrefix prefix
 
 linkToLatexCmd :: Format -> Text -> Text -> Inline -> Inline
 linkToLatexCmd format match with = \case
-  Link _ [Str t] (name, _)
+  Link _ (Strs t) (name, _)
     | match == name -> mkInline format with t
   t -> t
 
