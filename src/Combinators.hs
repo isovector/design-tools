@@ -36,9 +36,9 @@ linkToLatexCmd format match with = \case
 
 escapeLatex :: Text -> Text
 escapeLatex
-  = T.replace "~" "\\sim"
-  . T.replace "_" "\\textunderscore"
-  . T.replace "^" "\\textasciicircum"
+  = T.replace "~" "\\sim{}"
+  . T.replace "_" "\\textunderscore{}"
+  . T.replace "^" "\\textasciicircum{}"
 
 mkInline :: Format -> Text -> Text -> Inline
 mkInline (Format "epub") cls content = Span ("", [cls], []) [Str content]
