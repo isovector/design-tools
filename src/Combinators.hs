@@ -7,7 +7,9 @@ import Control.Monad
 import Text.Pandoc
 import Data.List
 import Data.Text (Text)
+import Utils
 import qualified Data.Text as T
+import Data.Foldable (asum)
 
 codeToLatexCmd :: Format -> (Text -> Maybe Text) -> Text -> Inline -> Inline
 codeToLatexCmd format match cmd = \case
@@ -25,7 +27,6 @@ br format match = \case
 
 prefixCodeToLatexCmd :: Format -> Text -> Text -> Inline -> Inline
 prefixCodeToLatexCmd format prefix = codeToLatexCmd format (T.stripPrefix prefix)
-
 
 linkToLatexCmd :: Format -> Text -> Text -> Inline -> Inline
 linkToLatexCmd format match with = \case

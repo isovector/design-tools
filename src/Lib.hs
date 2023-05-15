@@ -16,6 +16,7 @@ import qualified Data.Text as T
 import qualified Data.Vector as V
 import           Snippets
 import           Text.Pandoc
+import           Utils
 
 
 
@@ -78,24 +79,6 @@ showCSV = \case
           showVector $ selectCSV proj $ filterCSV field value csv
         _ -> error $ "bad argument format given to CSV: " <> T.unpack args
 
-
-pattern Strs :: Text -> [Inline]
-pattern Strs ts <-
-  ((id &&& id)
-    ->
-      ( all isStr -> True
-      , foldMap fromStr -> ts
-      )
-  )
-
-isStr :: Inline -> Bool
-isStr (Str _) = True
-isStr Space = True
-isStr _ = False
-
-fromStr :: Inline -> Text
-fromStr (Str s) = s
-fromStr Space = " "
 
 
 showVector :: V.Vector Text -> Block

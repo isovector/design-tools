@@ -15,6 +15,7 @@ import DeathNotes
 import Text.Pandoc
 import System.IO
 import Data.List
+import Agda
 
 import Text.Show.Pretty
 
@@ -27,7 +28,7 @@ main = toJSONFilter $ \(Just format :: Maybe Format) (p :: Pandoc) -> do
     , \p -> hPutStrLn stderr "agdamode" >> pure p
     , liftK $ walk $ linkToLatexCmd format "AgdaMode" "agdamode"
     , \p -> hPutStrLn stderr "agdacmds" >> pure p
-    , liftK $ walk $ linkToLatexCmd format "AgdaCmd" "agdacmd"
+    , liftK $ walk $ agdaCmd format
     , \p -> hPutStrLn stderr "anns" >> pure p
     , liftK $ walk $ linkToLatexCmd format "Ann" "ann"
     , \p -> hPutStrLn stderr "rev2" >> pure p
