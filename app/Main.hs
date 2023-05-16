@@ -25,40 +25,29 @@ main = toJSONFilter $ \(Just format :: Maybe Format) (p :: Pandoc) -> do
   hPrint stderr format
   passes p
     [ \p -> writeFile "/tmp/pandoc_input" (ppShow p) >> pure p
-    , \p -> hPutStrLn stderr "agdamode" >> pure p
-    , liftK $ walk $ linkToLatexCmd format "AgdaMode" "agdamode"
-    , \p -> hPutStrLn stderr "agdacmds" >> pure p
-    , liftK $ walk $ agdaCmd format
-    , \p -> hPutStrLn stderr "info" >> pure p
-    , liftK $ walk $ codeToEnv format "info" "AgdaInfo"
-    -- , \p -> hPutStrLn stderr "illegal" >> pure p
-    -- , liftK $ walk $ renameCode format "illegal" "agda"
-    , \p -> hPutStrLn stderr "anns" >> pure p
-    , liftK $ walk $ linkToLatexCmd format "Ann" "ann"
-    , \p -> hPutStrLn stderr "rev2" >> pure p
-    , liftK $ walk $ headerClassAppend format "rev2" "red"
-    , \p -> hPutStrLn stderr "laws" >> pure p
-    , liftK $ walk $ prefixCodeToLatexCmd format "law:" "lawname"
-    , \p -> hPutStrLn stderr "eqnbox" >> pure p
-    , liftK $ walk $ wrapCodeEnv format "haskell" "EqnBox" $ Just "law"
-    , \p -> hPutStrLn stderr "noindent" >> pure p
-    , liftK $ walk $ noIndent format
-    , \p -> hPutStrLn stderr "fix imgs" >> pure p
-    , liftK $ walk $ fixImages format
-    , \p -> hPutStrLn stderr "hidden" >> pure p
-    , liftK $ walk $ defnToLatexEnv format "Hidden" "hidden"
-    , \p -> hPutStrLn stderr "defns to laws" >> pure p
-    , liftK $ walk $ defnToLatexEnv format "FlushRight" "flushright"
-    , \p -> hPutStrLn stderr "br" >> pure p
-    , liftK $ walk $ br format "sdcp:br"
-    , \p -> hPutStrLn stderr "inline snippets" >> pure p
-    , walkM inlineSnippets
-    , \p -> hPutStrLn stderr "do ghci" >> pure p
-    , walkM emitGhci
-    , \p -> hPutStrLn stderr "strip code" >> pure p
-    , liftK $ walk stripCodeTail
-    , \p -> hPutStrLn stderr "ebook" >> pure p
-    , liftK $ walk $ ebookCode format
+    , label "agdamode" $ liftK $ walk $ linkToLatexCmd format "AgdaMode" "agdamode"
+    , label "agdacmds" $ liftK $ walk $ agdaCmd format
+    , label "info" $ liftK $ walk $ codeToEnv format "info" "AgdaInfo"
+    -- , label "illegal" $ liftK $ walk $ renameCode format "illegal" "agda"
+    , label "anns" $ liftK $ walk $ linkToLatexCmd format "Ann" "ann"
+    , label "rev2" $ liftK $ walk $ headerClassAppend format "rev2" "red"
+    , label "laws" $ liftK $ walk $ prefixCodeToLatexCmd format "law:" "lawname"
+    , label "types" $ liftK $ walk $ prefixCodeToLatexCmd format "type:" "AgdaFunction"
+    , label "defs" $ liftK $ walk $ prefixCodeToLatexCmd format "def:" "AgdaFunction"
+    , label "fields" $ liftK $ walk $ prefixCodeToLatexCmd format "field:" "AgdaField"
+    , label "constructors" $ liftK $ walk $ prefixCodeToLatexCmd format "ctor:" "AgdaInductiveConstructor"
+    , label "modules" $ liftK $ walk $ prefixCodeToLatexCmd format "module:" "AgdaModule"
+    , label "keywords" $ liftK $ walk $ prefixCodeToLatexCmd format "keyword:" "AgdaKeyword"
+    , label "eqnbox" $ liftK $ walk $ wrapCodeEnv format "haskell" "EqnBox" $ Just "law"
+    , label "noindent" $ liftK $ walk $ noIndent format
+    , label "fix imgs" $ liftK $ walk $ fixImages format
+    , label "hidden" $ liftK $ walk $ defnToLatexEnv format "Hidden" "hidden"
+    , label "defns to laws" $ liftK $ walk $ defnToLatexEnv format "FlushRight" "flushright"
+    , label "br" $ liftK $ walk $ br format "sdcp:br"
+    , label "inline snippets" $ walkM inlineSnippets
+    , label "do ghci" $ walkM emitGhci
+    , label "strip code" $ liftK $ walk stripCodeTail
+    , label "ebook" $ liftK $ walk $ ebookCode format
     , fmap pure compress
     , liftK $ walk $ defnToLatexEnv format "Exercise" "exercise"
     , liftK $ walk $ defnToLatexEnv format "Exercises" "exercise"
@@ -66,6 +55,10 @@ main = toJSONFilter $ \(Just format :: Maybe Format) (p :: Pandoc) -> do
     , runIOorExplode . walkM (writeLatexDeathNotes format)
     , \p -> writeFile "/tmp/pandoc_output" (ppShow p) >> pure p
     ]
+
+
+label :: String -> (t -> IO b) -> t -> IO b
+label n w = \p -> hPutStrLn stderr n >> w p
 
 
 -- | Epub gets built in the wrong directory so this hack fixes that
