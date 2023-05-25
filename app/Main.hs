@@ -35,6 +35,7 @@ main = toJSONFilter $ \(Just format :: Maybe Format) (p :: Pandoc) -> do
     , label "types" $ liftK $ walk $ prefixCodeToLatexCmd format "type:" "AgdaFunction"
     , label "defs" $ liftK $ walk $ prefixCodeToLatexCmd format "def:" "AgdaFunction"
     , label "fields" $ liftK $ walk $ prefixCodeToLatexCmd format "field:" "AgdaField"
+    , label "macro" $ liftK $ walk $ prefixCodeToLatexCmd format "macro:" "AgdaMacro"
     , label "constructors" $ liftK $ walk $ prefixCodeToLatexCmd format "ctor:" "AgdaInductiveConstructor"
     , label "modules" $ liftK $ walk $ prefixCodeToLatexCmd format "module:" "AgdaModule"
     , label "keywords" $ liftK $ walk $ prefixCodeToLatexCmd format "keyword:" "AgdaKeyword"
