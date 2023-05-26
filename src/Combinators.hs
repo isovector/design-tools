@@ -37,6 +37,7 @@ linkToLatexCmd format match with = \case
 escapeLatex :: Text -> Text
 escapeLatex
   = T.replace "~" "\\sim{}"
+  . T.replace "$" "\\$"
   . T.replace "_" "\\textunderscore{}"
   . T.replace "^" "\\textasciicircum{}"
 
