@@ -49,6 +49,7 @@ main = toJSONFilter $ \(Just format :: Maybe Format) (p :: Pandoc) -> do
     , label "do ghci" $ walkM emitGhci
     , label "strip code" $ liftK $ walk stripCodeTail
     , label "ebook" $ liftK $ walk $ ebookCode format
+    , label "only book" $ liftK $ walk $ defnOnlyInFormat format "latex" "OnlyBook"
     , fmap pure compress
     , liftK $ walk $ defnToLatexEnv format "Exercise" "exercise"
     , liftK $ walk $ defnToLatexEnv format "Exercises" "exercise"

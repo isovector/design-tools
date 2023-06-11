@@ -53,6 +53,15 @@ defnToLatexEnv format match with = \case
         mkEnv format with [] $ join bs
   t -> t
 
+defnOnlyInFormat :: Format -> Text -> Text -> Block -> Block
+defnOnlyInFormat (Format format) only match = \case
+  DefinitionList [([Str name], bs)]
+    | name == match ->
+        case format == only of
+          True -> Div ("", [], []) $ join bs
+          False -> Plain []
+  t -> t
+
 -- codeBlockToEnv :: Format -> Text -> Text -> Block -> Block
 -- defnToLatexEnv format match with = \case
 --   DefinitionList [([Str name], bs)]
