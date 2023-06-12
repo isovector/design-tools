@@ -3,6 +3,7 @@
 
 module Combinators where
 
+import Debug.Trace
 import Control.Monad
 import Text.Pandoc
 import Data.List
@@ -48,14 +49,14 @@ mkInline (Format "latex") cls content =
 
 defnToLatexEnv :: Format -> Text -> Text -> Block -> Block
 defnToLatexEnv format match with = \case
-  DefinitionList [([Str name], bs)]
+  DefinitionList [(Strs (traceShowId -> name), bs)]
     | name == match ->
         mkEnv format with [] $ join bs
   t -> t
 
 defnOnlyInFormat :: Format -> Text -> Text -> Block -> Block
 defnOnlyInFormat (Format format) only match = \case
-  DefinitionList [([Str name], bs)]
+  DefinitionList [(Strs (traceShowId -> name), bs)]
     | name == match ->
         case format == only of
           True -> Div ("", [], []) $ join bs
@@ -92,4 +93,23 @@ mkEnv (Format "latex") env args bs =
     ]
 mkEnv (Format "epub") env args bs =
   Div ("", [env], zipWith (\ix arg -> ("data-arg" <> T.pack (show ix), arg)) [1..] args) bs
+
+mkRawEnv :: Format -> Text -> [Text] -> Text -> Block
+mkRawEnv (Format "latex") env args bs =
+  Div ("", [], []) $ join
+    [ pure . Plain . pure . RawInline (Format "latex") $
+      mconcat
+        [ "\\begin{" <> env <> "}"
+        , case args of
+            [] -> ""
+            _ -> "{" <> T.intercalate "}{" args <> "}"
+        , "\n"
+        , bs
+        , "\n"
+        , "\\end{" <> env <> "}"
+        ]
+    , pure $ Para [Str ""]
+    ]
+mkRawEnv (Format "epub") env args bs =
+  Div ("", [env], zipWith (\ix arg -> ("data-arg" <> T.pack (show ix), arg)) [1..] args) [ Plain [Str bs] ]
 
