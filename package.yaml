@@ -33,6 +33,8 @@ dependencies:
 - process
 - lens
 - pretty-show
+- mtl
+- generic-lens
 
 default-extensions:
   - OverloadedStrings

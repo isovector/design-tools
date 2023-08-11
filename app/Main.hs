@@ -16,6 +16,7 @@ import Text.Pandoc
 import System.IO
 import Data.List
 import Agda
+import AgdaDump
 
 import Text.Show.Pretty
 
@@ -33,7 +34,7 @@ main = toJSONFilter $ \(Just format :: Maybe Format) (p :: Pandoc) -> do
     , label "rev2" $ liftK $ walk $ headerClassAppend format "rev2" "red"
     , label "laws" $ liftK $ walk $ prefixCodeToLatexCmd format "law:" "lawname"
     , label "types" $ liftK $ walk $ prefixCodeToLatexCmd format "type:" "AgdaFunction"
-    , label "agdaref" $ liftK $ walk $ prefixCodeToLatexCmd format "agda:" "AgdaRef"
+    , label "agdaref" $ extractOf
     , label "defs" $ liftK $ walk $ prefixCodeToLatexCmd format "def:" "AgdaFunction"
     , label "fields" $ liftK $ walk $ prefixCodeToLatexCmd format "field:" "AgdaField"
     , label "macro" $ liftK $ walk $ prefixCodeToLatexCmd format "macro:" "AgdaMacro"
