@@ -1,4 +1,5 @@
-resolver: lts-18.16
+resolver:
+  url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/nightly/2023/8/11.yaml
 
 packages:
 - .
