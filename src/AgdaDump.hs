@@ -37,6 +37,12 @@ import           Text.Pandoc.Walk
 import           Text.Read
 
 
+newtype Version = Version Int
+  deriving (Eq, Ord, Show, Read, Bounded, Generic)
+
+instance Hashable Version
+
+
 data DumpSort
   = Invalid
   | Inline
@@ -144,7 +150,7 @@ extractOf p = do
     tell ["\\end{code}"]
     pure p'
 
-  dump <- caching keyset $ do
+  dump <- caching (keyset, Version 1) $ do
     _ <- withCurrentDirectory "/tmp"
        $ readProcess "agda" ["--latex", T.unpack modul' <> ".lagda.tex"] ""
     f <- T.readFile $ "/tmp/latex/" <> T.unpack modul' <> ".tex"
@@ -201,8 +207,15 @@ test = T.unlines
 
 parseHighlightedAgda :: Text -> Map DumpKey Text
 parseHighlightedAgda
-  = fmap T.unlines
-  . fmap (fmap (T.replace "\\AgdaSpace{}" "~" . T.replace "\\<" "") . init . drop 4)
+  = M.mapWithKey (\k t ->
+      case k of
+        DumpKey Inline _ -> T.replace "%\\n" "" t
+        _ -> t
+
+    )
+  . fmap T.unlines
+  . fmap (fmap ( T.replace "\\AgdaSpace{}" "~"
+               . T.replace "\\<" "") . init . drop 4)
   . splitMe
   . T.lines
 
