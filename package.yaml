@@ -35,6 +35,7 @@ dependencies:
 - pretty-show
 - mtl
 - generic-lens
+- transformers
 
 default-extensions:
   - OverloadedStrings
