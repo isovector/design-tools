@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds            #-}
 {-# LANGUAGE DeriveGeneric        #-}
 {-# LANGUAGE DerivingVia          #-}
+{-# LANGUAGE LambdaCase           #-}
 {-# LANGUAGE OverloadedStrings    #-}
 {-# LANGUAGE TypeApplications     #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
@@ -9,11 +10,13 @@
 
 module AgdaDump where
 
-import Control.Monad
+import Data.Hashable
 import GHC.Generics
-
+import qualified Data.Map as M
+import Data.Map (Map)
+import Control.Monad
 import Data.Char (isSpace)
-import Control.Lens (over, set)
+import Control.Lens (set)
 import Control.Monad.State.Strict
 import Control.Monad.Writer.CPS
 import qualified Data.Text as T
@@ -24,9 +27,16 @@ import Text.Pandoc.Walk
 import Data.Generics.Product.Fields
 -- import Data.Monoid
 
+data DumpSort
+  = Invalid
+  | Inline
+  deriving (Eq, Ord, Show, Read, Enum, Bounded)
+
+data DumpKey = DumpKey DumpSort Int
+  deriving (Eq, Ord, Show, Read)
+
 data St = St
-  { st_next   :: Int
-  , st_indent :: Int
+  { st_indent :: Int
   }
   deriving (Generic)
 
@@ -46,32 +56,29 @@ getRealCode c@(CodeBlock (_, cls, _) t)
 getRealCode c = walkM getInlineCode c
 
 
-getNextExtract :: ExtractM Int
-getNextExtract = gets st_next <* modify (over (field @"st_next") (+1))
+getNextExtract :: Hashable a => a -> ExtractM Int
+getNextExtract = pure . hash
 
-mkBanner :: Text -> Text -> Int -> Text
-mkBanner z sort ix = mconcat
+mkBanner :: Text -> DumpKey -> Text
+mkBanner z key = mconcat
   [ "-- >>>>>>>>>> "
   , z
   , " "
-  , sort
-  , " "
-  , T.pack $ show ix
+  , T.pack $ show key
   ]
 
-extractMe :: Text -> ExtractM a -> ExtractM a
-extractMe sort m = do
-  ix <- getNextExtract
-  tell . pure $ mkBanner "START" sort ix
+extractMe :: DumpKey -> ExtractM a -> ExtractM a
+extractMe key m = do
+  tell . pure $ mkBanner "START" key
   r <- m
-  tell . pure $ mkBanner "END" sort ix
+  tell . pure $ mkBanner "END" key
   pure r
 
 getInvalidCode :: Block -> ExtractM Block
 getInvalidCode c@(CodeBlock (_, cls, _) t)
   | not $ elem "invalid" cls = pure c
   | otherwise = do
-      extractMe "INVALID" $ tell [t]
+      extractMe (DumpKey Invalid $ hash $ show c) $ tell [t]
       pure c
 getInvalidCode c = pure c
 
@@ -79,14 +86,14 @@ getInlineCode :: Inline -> ExtractM Inline
 getInlineCode c@(Code _ t)
   | Just t' <- T.stripPrefix "expr:" t =  do
       indent <- gets st_indent
-      extractMe "INLINE" $ tell [T.replicate indent " " <> "_ = " <> t']
+      extractMe (DumpKey Inline $ hash $ show c) $ tell [T.replicate indent " " <> "_ = " <> t']
       pure c
 getInlineCode c = pure c
 
 
 runExtract :: ExtractM a -> IO a
 runExtract m = do
-  let (a, w) = runWriter $ flip evalStateT (St 0 0) m
+  let (a, w) = runWriter $ flip evalStateT (St 0) m
   T.writeFile "/tmp/1-agda.lagda.tex" $ T.unlines w
   pure a
 
@@ -99,37 +106,40 @@ extractOf p = do
     tell ["\\end{code}"]
     pure p'
 
-
-splitMe :: [Text] -> [[Text]]
-splitMe = go [[]]
+splitMe :: [Text] -> Map DumpKey [Text]
+splitMe = go undefined [[]]
   where
     isStart :: Text -> Bool
-    isStart = T.isInfixOf "START"
+    isStart = T.isInfixOf ">>>>>>>>>>\\ START"
 
     isEnd :: Text -> Bool
-    isEnd = T.isInfixOf "END"
+    isEnd = T.isInfixOf ">>>>>>>>>>\\ END"
 
-    go :: [[Text]] -> [Text] -> [[Text]]
-    go (acc : accs) (t : ts)
-      | isStart t = go ([] : acc : accs) ts
-      | isEnd t = reverse acc : go accs ts
-      | otherwise = go ((t : acc) : accs) ts
-    go _ _ = []
+    getKey :: Text -> DumpKey
+    getKey
+      = maybe (error "no key") (read . T.unpack)
+      . T.stripPrefix "-- >>>>>>>>>> START "
+      . T.drop 18
+      . T.dropEnd 4
+      . T.replace "\\ " " "
+
+    go :: DumpKey -> [[Text]] -> [Text] -> Map DumpKey [Text]
+    go key (acc : accs) (t : ts)
+      | isStart t = go (getKey t) ([] : acc : accs) ts
+      | isEnd t = M.insert key (reverse acc) $ go undefined accs ts
+      | otherwise = go key ((t : acc) : accs) ts
+    go _ _ _ = mempty
 
 
 test :: Text
 test = T.unlines
-  [ "START"
+  [ "\\>[0]\\AgdaComment{--\\ >>>>>>>>>>\\ START\\ DumpKey\\ Inline\\ 0}\\<%"
   , "a"
   , "b"
-  , "END"
-  , "c"
-  , "START"
-  , "d"
-  , "END"
+  , "\\>[0]\\AgdaComment{--\\ >>>>>>>>>>\\ END\\ DumpKey\\ Inline\\ 0}\\<%"
   ]
 
-parseHighlightedAgda :: Text -> [Text]
+parseHighlightedAgda :: Text -> Map DumpKey Text
 parseHighlightedAgda
   = fmap T.unlines
   . fmap (fmap (T.replace "\\<" "") . init . drop 4)
