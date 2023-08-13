@@ -37,6 +37,7 @@ dependencies:
 - generic-lens
 - transformers
 - extra
+- filepath
 
 default-extensions:
   - OverloadedStrings

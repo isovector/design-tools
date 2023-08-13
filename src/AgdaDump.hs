@@ -26,11 +26,13 @@ import           Data.List (sort)
 import           Data.List.Extra
 import           Data.Map (Map)
 import qualified Data.Map as M
+import           Data.Maybe (fromMaybe)
 import           Data.Monoid
 import           Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import           GHC.Generics
+import           System.FilePath
 import           System.Directory
 import           System.IO
 import           System.Process
@@ -183,6 +185,9 @@ getInlineCode c@(Code _ t)
 getInlineCode c = pure c
 
 
+workingDir :: FilePath
+workingDir = "/home/sandy/prj/math-for-programmers/build/tex/agda"
+
 ------------------------------------------------------------------------------
 -- | Given a module name, run the 'ExtractM' monad, dropping the resulting
 -- emitted code into @/tmp@
@@ -192,7 +197,7 @@ runExtract modul m = do
       modul' = modul <> "-dump"
       out = T.replace modul modul' $ T.unlines w
       keyset = sort keys
-  T.writeFile ("/tmp/" <> T.unpack modul' <> ".lagda.tex") out
+  T.writeFile (workingDir </> T.unpack modul' <> ".lagda.tex") out
   pure (keyset, a)
 
 
@@ -203,47 +208,50 @@ runExtract modul m = do
 -- document.
 doHighlight :: Pandoc -> IO Pandoc
 doHighlight p = do
-  let First (Just modul) = query getModule p
+  let modul = fromMaybe "" $ getFirst $ query getModule p
       modul' = modul <> "-dump"
 
-  -- Get the dumpkey set from the document, and emit the necessary code to
-  -- check.
-  (inl_keyset, p') <- runExtract modul $ do
-    tell ["\\begin{code}"]
-    p' <- walkM getRealAndInlineCode p
-    tell ["\\end{code}"]
-    pure p'
+  case modul == "" of
+    True -> pure p
+    False -> do
+      -- Get the dumpkey set from the document, and emit the necessary code to
+      -- check.
+      (inl_keyset, p') <- runExtract modul $ do
+        tell ["\\begin{code}"]
+        p' <- walkM getRealAndInlineCode p
+        tell ["\\end{code}"]
+        pure p'
 
-  -- Run @agda --latex@ on the emitted code, and then parse out the highlighted
-  -- code.
-  --
-  -- 'caching' uses the keyset as a cache key, meaning we don't need to rerun
-  -- this step if the actual bits to highlight haven't changed since last time.
-  -- The keyset itself depends on the hash of each snippet.
-  inl_dump <- caching (Inline, inl_keyset, Version 0) $ do
-    _ <- withCurrentDirectory "/tmp"
-       $ readProcess "agda" ["--latex", T.unpack modul' <> ".lagda.tex"] ""
-    f <- T.readFile $ "/tmp/latex/" <> T.unpack modul' <> ".tex"
-    pure $ parseHighlightedAgda f
-  hPrint stderr inl_keyset
+      -- Run @agda --latex@ on the emitted code, and then parse out the highlighted
+      -- code.
+      --
+      -- 'caching' uses the keyset as a cache key, meaning we don't need to rerun
+      -- this step if the actual bits to highlight haven't changed since last time.
+      -- The keyset itself depends on the hash of each snippet.
+      inl_dump <- caching (Inline, inl_keyset, Version 0) $ do
+        _ <- withCurrentDirectory workingDir
+          $ readProcess "agda" ["--latex", T.unpack modul' <> ".lagda.tex"] ""
+        f <- T.readFile $ workingDir </> "latex" </> T.unpack modul' <> ".tex"
+        pure $ parseHighlightedAgda f
+      hPrint stderr inl_keyset
 
 
-  -- Now do it all again, but this time for invalid code
-  -- check.
-  (inv_keyset, p'') <- runExtract modul $ do
-    tell ["\\begin{code}"]
-    p'' <- walkM getRealAndIllegalCode p'
-    tell ["\\end{code}"]
-    pure p''
-  hPrint stderr inv_keyset
-  inv_dump <- caching (Illegal, inv_keyset, Version 0) $ do
-    _ <- withCurrentDirectory "/tmp"
-       $ readProcess "agda" ["--latex", "--only-scope-checking", T.unpack modul' <> ".lagda.tex"] ""
-    f <- T.readFile $ "/tmp/latex/" <> T.unpack modul' <> ".tex"
-    pure $ parseHighlightedAgda f
+      -- Now do it all again, but this time for invalid code
+      -- check.
+      (inv_keyset, p'') <- runExtract modul $ do
+        tell ["\\begin{code}"]
+        p'' <- walkM getRealAndIllegalCode p'
+        tell ["\\end{code}"]
+        pure p''
+      hPrint stderr inv_keyset
+      inv_dump <- caching (Illegal, inv_keyset, Version 0) $ do
+        _ <- withCurrentDirectory workingDir
+          $ readProcess "agda" ["--latex", "--only-scope-checking", T.unpack modul' <> ".lagda.tex"] ""
+        f <- T.readFile $ workingDir </> "latex" </> T.unpack modul' <> ".tex"
+        pure $ parseHighlightedAgda f
 
-  let dump = inl_dump <> inv_dump
-  pure $ walk (spliceInline dump) $ walk (spliceBlock dump) p''
+      let dump = inl_dump <> inv_dump
+      pure $ walk (spliceInline dump) $ walk (spliceBlock dump) p''
 
 
 ------------------------------------------------------------------------------
