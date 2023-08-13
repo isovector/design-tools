@@ -312,7 +312,7 @@ parseHighlightedAgda
   = M.mapWithKey (\k t ->
       case k of
         DumpKey Inline _ -> T.replace "%\n" "" t
-        DumpKey Illegal _ -> "\\begin{VERYILLEGALCODE}%\n%\n" <> t <> "\\end{VERYILLEGALCODE}"
+        DumpKey Illegal _ -> "\\begin{VERYILLEGALCODE}[indent=666]%\n%\n" <> t <> "\\end{VERYILLEGALCODE}"
     )
   . fmap T.unlines
   . M.mapWithKey (\case
