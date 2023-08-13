@@ -11,9 +11,9 @@
 
 {-# OPTIONS_GHC -Wall          #-}
 
-module AgdaDump (highlightInline) where
+module AgdaDump (doHighlight) where
 
-import Cache
+import           Cache
 import           Control.Lens (set)
 import           Control.Monad
 import           Control.Monad.State.Strict
@@ -23,6 +23,7 @@ import           Data.Char (isSpace)
 import           Data.Generics.Product.Fields
 import           Data.Hashable
 import           Data.List (sort)
+import           Data.List.Extra
 import           Data.Map (Map)
 import qualified Data.Map as M
 import           Data.Monoid
@@ -31,10 +32,11 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import           GHC.Generics
 import           System.Directory
+import           System.IO
 import           System.Process
 import           Text.Pandoc.Definition
 import           Text.Pandoc.Walk
-import           Text.Read
+import           Text.Read (readMaybe)
 
 
 ------------------------------------------------------------------------------
@@ -50,7 +52,7 @@ instance Hashable Version
 -- as well as inline blocks of code. 'DumpSort' lets us differentiate between
 -- the two cases, since we need to do different processing on them.
 data DumpSort
-  = Invalid
+  = Illegal
   | Inline
   deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic)
 
@@ -89,18 +91,31 @@ getModule (CodeBlock (_, cls, _) t)
 getModule _ = mempty
 
 
+emitRealCode :: Text -> ExtractM ()
+emitRealCode t = do
+    tell [t]
+    let ls = filter ((/= "") . T.strip) $ T.lines t
+    when (not $ null ls) $ do
+      modify $ set (field @"st_indent") $ T.length $ T.takeWhile isSpace $ last $ ls
+
 ------------------------------------------------------------------------------
 -- | Extract literate Agda code from the file.
-getRealCode :: Block -> ExtractM Block
-getRealCode c@(CodeBlock (_, cls, _) t)
+getRealAndInlineCode :: Block -> ExtractM Block
+getRealAndInlineCode c@(CodeBlock (_, cls, _) t)
   | not $ elem "agda" cls = pure c
   | otherwise = do
-      tell [t]
-      let ls = filter ((/= "") . T.strip) $ T.lines t
-      when (not $ null ls) $ do
-        modify $ set (field @"st_indent") $ T.length $ T.takeWhile isSpace $ last $ ls
+      emitRealCode t
       pure c
-getRealCode c = walkM getInlineCode c
+getRealAndInlineCode c = walkM getInlineCode c
+
+------------------------------------------------------------------------------
+-- | Extract literate Agda code from the file.
+getRealAndIllegalCode :: Block -> ExtractM Block
+getRealAndIllegalCode c@(CodeBlock (_, cls, _) t)
+  | elem "agda" cls = do
+      emitRealCode t
+      pure c
+getRealAndIllegalCode c = getIllegalCode c
 
 
 ------------------------------------------------------------------------------
@@ -119,6 +134,7 @@ mkBanner z key = mconcat
 -- | Wrap the given monadic action in a START and END banner.
 extractMe :: DumpKey -> ExtractM a -> ExtractM a
 extractMe key m = do
+  lift $ lift $ tell [key]
   tell . pure $ mkBanner "START" key
   r <- m
   tell . pure $ mkBanner "END" key
@@ -126,12 +142,12 @@ extractMe key m = do
 
 
 ------------------------------------------------------------------------------
--- | Pattern synonym for "extending" the pandoc AST with references to Invalid
+-- | Pattern synonym for "extending" the pandoc AST with references to Illegal
 -- Agda snippets
-pattern InvalidRef :: DumpKey -> Block
-pattern InvalidRef key <- CodeBlock _ (readMaybe . T.unpack -> Just key)
+pattern IllegalRef :: DumpKey -> Block
+pattern IllegalRef key <- CodeBlock _ (readMaybe . T.unpack -> Just key)
   where
-    InvalidRef = CodeBlock ("", [], []) . T.pack . show
+    IllegalRef = CodeBlock ("", [], []) . T.pack . show
 
 ------------------------------------------------------------------------------
 -- | Pattern synonym for "extending" the pandoc AST with references to inline
@@ -143,16 +159,16 @@ pattern InlineRef key <- Code _ (readMaybe . T.unpack -> Just key)
 
 
 ------------------------------------------------------------------------------
--- | Replace an invalid code block with an InvalidRef, emitting it into the
+-- | Replace an invalid code block with an IllegalRef, emitting it into the
 -- code we're going to scope-check.
-getInvalidCode :: Block -> ExtractM Block
-getInvalidCode c@(CodeBlock (_, cls, _) t)
-  | not $ elem "invalid" cls = pure c
+getIllegalCode :: Block -> ExtractM Block
+getIllegalCode c@(CodeBlock (_, cls, _) t)
+  | not $ elem "illegal" cls = pure c
   | otherwise = do
-      let key = DumpKey Invalid $ hash $ show c
+      let key = DumpKey Illegal $ hash $ show c
       extractMe key $ tell [t]
-      pure $ InvalidRef key
-getInvalidCode c = pure c
+      pure $ IllegalRef key
+getIllegalCode c = pure c
 
 ------------------------------------------------------------------------------
 -- | Replace a inline code block with an InlineRef, emitting it and a @_ =@
@@ -185,16 +201,16 @@ runExtract modul m = do
 -- document, emitting it to a seperate file, running the syntax highlighter on
 -- that, and then splices the formatted syntax back into the original pandoc
 -- document.
-highlightInline :: Pandoc -> IO Pandoc
-highlightInline p = do
+doHighlight :: Pandoc -> IO Pandoc
+doHighlight p = do
   let First (Just modul) = query getModule p
       modul' = modul <> "-dump"
 
   -- Get the dumpkey set from the document, and emit the necessary code to
   -- check.
-  (keyset, p') <- runExtract modul $ do
+  (inl_keyset, p') <- runExtract modul $ do
     tell ["\\begin{code}"]
-    p' <- walkM getRealCode p
+    p' <- walkM getRealAndInlineCode p
     tell ["\\end{code}"]
     pure p'
 
@@ -204,13 +220,30 @@ highlightInline p = do
   -- 'caching' uses the keyset as a cache key, meaning we don't need to rerun
   -- this step if the actual bits to highlight haven't changed since last time.
   -- The keyset itself depends on the hash of each snippet.
-  dump <- caching (keyset, Version 0) $ do
+  inl_dump <- caching (Inline, inl_keyset, Version 0) $ do
     _ <- withCurrentDirectory "/tmp"
        $ readProcess "agda" ["--latex", T.unpack modul' <> ".lagda.tex"] ""
     f <- T.readFile $ "/tmp/latex/" <> T.unpack modul' <> ".tex"
     pure $ parseHighlightedAgda f
+  hPrint stderr inl_keyset
 
-  pure $ walk (spliceInline dump) $ walk (spliceBlock dump) p'
+
+  -- Now do it all again, but this time for invalid code
+  -- check.
+  (inv_keyset, p'') <- runExtract modul $ do
+    tell ["\\begin{code}"]
+    p'' <- walkM getRealAndIllegalCode p'
+    tell ["\\end{code}"]
+    pure p''
+  hPrint stderr inv_keyset
+  inv_dump <- caching (Illegal, inv_keyset, Version 0) $ do
+    _ <- withCurrentDirectory "/tmp"
+       $ readProcess "agda" ["--latex", "--only-scope-checking", T.unpack modul' <> ".lagda.tex"] ""
+    f <- T.readFile $ "/tmp/latex/" <> T.unpack modul' <> ".tex"
+    pure $ parseHighlightedAgda f
+
+  let dump = inl_dump <> inv_dump
+  pure $ walk (spliceInline dump) $ walk (spliceBlock dump) p''
 
 
 ------------------------------------------------------------------------------
@@ -254,9 +287,9 @@ test = T.unlines
 
 ------------------------------------------------------------------------------
 -- | Splice a 'DumpKey' map back into a 'Block'; in essence, replacing the
--- 'InvalidRef' with the highlighted results.
+-- 'IllegalRef' with the highlighted results.
 spliceBlock :: Map DumpKey Text -> Block -> Block
-spliceBlock dk (InvalidRef key)
+spliceBlock dk (IllegalRef key)
   | Just t <- M.lookup key dk
   = RawBlock "latex" t
 spliceBlock _ b = b
@@ -279,15 +312,18 @@ parseHighlightedAgda
   = M.mapWithKey (\k t ->
       case k of
         DumpKey Inline _ -> T.replace "%\n" "" t
-        _ -> t
+        DumpKey Illegal _ -> "\\begin{VERYILLEGALCODE}%\n%\n" <> t <> "\\end{VERYILLEGALCODE}"
     )
   . fmap T.unlines
-  . fmap ( fmap ( T.replace "\\AgdaSpace{}" "~"
-                . T.replace "\\<" ""
-                )
+  . M.mapWithKey (\case
+      DumpKey Inline _ ->
+        fmap ( T.replace "\\AgdaSpace{}" "~"
+             . T.replace "\\<" ""
+             )
          . init
          . drop 4
-         )
+      DumpKey Illegal _ -> dropEnd 1 . drop 1
+                 )
   . extractBetweenBanners
   . T.lines
 

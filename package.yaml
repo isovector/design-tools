@@ -36,6 +36,7 @@ dependencies:
 - mtl
 - generic-lens
 - transformers
+- extra
 
 default-extensions:
   - OverloadedStrings
