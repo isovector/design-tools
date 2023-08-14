@@ -99,12 +99,11 @@ compress (Pandoc meta blocks) = Pandoc meta $ go blocks
     go [] = []
 
 
-noIndent :: Format -> Block -> Block
-noIndent (Format "latex") p@(Para pc@(Str str : _)) =
-  case fmap isLower $ T.unpack $ T.take 1 str of
-    [True] -> Para $ RawInline (Format "latex") "\\noindent" : Space : pc
-    _ -> p
-noIndent _ p = p
+noIndent :: Format -> [Block] -> [Block]
+noIndent f@(Format "latex") (c@CodeBlock{} : p@(Para pc@(Str str : _)) : xs) =
+    c : (Para $ RawInline (Format "latex") "\\noindent" : Space : pc) : noIndent f xs
+noIndent f@(Format "latex") (x : xs) = x : noIndent f xs
+noIndent _ t = t
 
 
 ebookCode :: Format -> Block -> Block
