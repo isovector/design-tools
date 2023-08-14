@@ -26,37 +26,51 @@ main = toJSONFilter $ \(Just format :: Maybe Format) (p :: Pandoc) -> do
   hPrint stderr format
   passes p
     [ \p -> writeFile "/tmp/pandoc_input" (ppShow p) >> pure p
+    -- AGDA
     , label "agdamode" $ liftK $ walk $ linkToLatexCmd format "AgdaMode" "agdamode"
     , label "agdacmds" $ liftK $ walk $ agdaCmd format
     , label "info" $ liftK $ walk $ codeToEnv format "info" "AgdaInfo"
-    -- , label "illegal" $ liftK $ walk $ renameCode format "illegal" "agda"
-    , label "anns" $ liftK $ walk $ linkToLatexCmd format "Ann" "ann"
-    , label "rev2" $ liftK $ walk $ headerClassAppend format "rev2" "red"
-    , label "laws" $ liftK $ walk $ prefixCodeToLatexCmd format "law:" "lawname"
     , label "types" $ liftK $ walk $ prefixCodeToLatexCmd format "type:" "AgdaFunction"
     , label "agdaref" $ doHighlight
     , label "defs" $ liftK $ walk $ prefixCodeToLatexCmd format "def:" "AgdaFunction"
     , label "fields" $ liftK $ walk $ prefixCodeToLatexCmd format "field:" "AgdaField"
+    , label "hole" $ liftK $ walk $ prefixCodeToLatexCmd format "hole:" "AgdaHole"
     , label "macro" $ liftK $ walk $ prefixCodeToLatexCmd format "macro:" "AgdaMacro"
     , label "constructors" $ liftK $ walk $ prefixCodeToLatexCmd format "ctor:" "AgdaInductiveConstructor"
     , label "modules" $ liftK $ walk $ prefixCodeToLatexCmd format "module:" "AgdaModule"
     , label "keywords" $ liftK $ walk $ prefixCodeToLatexCmd format "keyword:" "AgdaKeyword"
+
+    -- ANNOTATIONS
+    , label "anns" $ liftK $ walk $ linkToLatexCmd format "Ann" "ann"
+
+    -- ALGEBRA DRIVEN DESIGN
+    , label "laws" $ liftK $ walk $ prefixCodeToLatexCmd format "law:" "lawname"
     , label "eqnbox" $ liftK $ walk $ wrapCodeEnv format "haskell" "EqnBox" $ Just "law"
-    , label "noindent" $ liftK $ walk $ noIndent format
-    , label "fix imgs" $ liftK $ walk $ fixImages format
-    , label "hidden" $ liftK $ walk $ defnToLatexEnv format "Hidden" "hidden"
-    , label "defns to laws" $ liftK $ walk $ defnToLatexEnv format "FlushRight" "flushright"
     , label "br" $ liftK $ walk $ br format "sdcp:br"
+    , label "defns to laws" $ liftK $ walk $ defnToLatexEnv format "FlushRight" "flushright"
+
+    -- INLINE SNIPPETS
     , label "inline snippets" $ walkM inlineSnippets
+
+    -- GHCI
     , label "do ghci" $ walkM emitGhci
-    , label "strip code" $ liftK $ walk stripCodeTail
-    , label "ebook" $ liftK $ walk $ ebookCode format
+
+    -- LOGICAL LAYOUT
+    , label "hidden" $ liftK $ walk $ defnToLatexEnv format "Hidden" "hidden"
+    , label "noindent" $ liftK $ walk $ noIndent format
     , label "only book" $ liftK $ walk $ defnOnlyInFormat format "latex" "OnlyBook"
+    , label "fix imgs" $ liftK $ walk $ fixImages format
+    , label "rev2" $ liftK $ walk $ headerClassAppend format "rev2" "red"
     , fmap pure compress
     , liftK $ walk $ defnToLatexEnv format "Exercise" "exercise"
     , liftK $ walk $ defnToLatexEnv format "Exercises" "exercise"
-    , liftK $ walk $ quoteToDefn "TODO(sandy):" "TODO"
     , runIOorExplode . walkM (writeLatexDeathNotes format)
+
+    -- FORMAT SPECIFIC
+    , label "strip code" $ liftK $ walk stripCodeTail
+    , label "ebook" $ liftK $ walk $ ebookCode format
+    , liftK $ walk $ quoteToDefn "TODO(sandy):" "TODO"
+
     , \p -> writeFile "/tmp/pandoc_output" (ppShow p) >> pure p
     ]
 
