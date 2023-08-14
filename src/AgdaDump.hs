@@ -232,7 +232,7 @@ doHighlight p = do
       inl_dump <- caching (Inline, inl_keyset, Version 0) $ do
         (code, out, _)
           <- withCurrentDirectory workingDir
-            $ readProcessWithExitCode "agda" ["--latex", T.unpack modul' <> ".lagda.tex"] ""
+            $ readProcessWithExitCode "agda" ["--latex", "--only-scope-checking", T.unpack modul' <> ".lagda.tex"] ""
         unless (code == ExitSuccess) $ do
           hPutStr stderr out
           error "agda died"
