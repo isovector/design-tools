@@ -39,6 +39,7 @@ import           System.Process
 import           Text.Pandoc.Definition
 import           Text.Pandoc.Walk
 import           Text.Read (readMaybe)
+import System.Exit
 
 
 ------------------------------------------------------------------------------
@@ -229,8 +230,13 @@ doHighlight p = do
       -- this step if the actual bits to highlight haven't changed since last time.
       -- The keyset itself depends on the hash of each snippet.
       inl_dump <- caching (Inline, inl_keyset, Version 0) $ do
-        _ <- withCurrentDirectory workingDir
-          $ readProcess "agda" ["--latex", T.unpack modul' <> ".lagda.tex"] ""
+        (code, out, _)
+          <- withCurrentDirectory workingDir
+            $ readProcessWithExitCode "agda" ["--latex", T.unpack modul' <> ".lagda.tex"] ""
+        unless (code == ExitSuccess) $ do
+          hPutStr stderr out
+          error "agda died"
+
         f <- T.readFile $ workingDir </> "latex" </> T.unpack modul' <> ".tex"
         pure $ parseHighlightedAgda f
       hPrint stderr inl_keyset
@@ -245,8 +251,13 @@ doHighlight p = do
         pure p''
       hPrint stderr inv_keyset
       inv_dump <- caching (Illegal, inv_keyset, Version 0) $ do
-        _ <- withCurrentDirectory workingDir
-          $ readProcess "agda" ["--latex", "--only-scope-checking", T.unpack modul' <> ".lagda.tex"] ""
+        (code, out, _)
+          <- withCurrentDirectory workingDir
+            $ readProcessWithExitCode "agda" ["--latex", "--only-scope-checking", T.unpack modul' <> ".lagda.tex"] ""
+
+        unless (code == ExitSuccess) $ do
+          hPutStr stderr out
+          error "agda died"
         f <- T.readFile $ workingDir </> "latex" </> T.unpack modul' <> ".tex"
         pure $ parseHighlightedAgda f
 
