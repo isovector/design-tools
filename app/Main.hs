@@ -1,5 +1,7 @@
+{-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications    #-}
+{-# LANGUAGE ViewPatterns        #-}
 
 module Main where
 
@@ -63,9 +65,11 @@ main = toJSONFilter $ \(Just format :: Maybe Format) (p :: Pandoc) -> do
     , label "fix imgs" $ liftK $ walk $ fixImages format
     , label "rev2" $ liftK $ walk $ headerClassAppend format "rev2" "red"
     , fmap pure compress
-    , liftK $ walk $ defnToLatexEnv format "Exercise" "exercise"
-    , liftK $ walk $ defnToLatexEnv format "Exercises" "exercise"
+    -- , liftK $ walk $ defnToLatexEnv format "Exercise" "exercise"
+    -- , liftK $ walk $ defnToLatexEnv format "Exercises" "exercise"
     , runIOorExplode . walkM (writeLatexDeathNotes format)
+
+    , label "flatten"$ liftK $ walk flatten
 
     -- FORMAT SPECIFIC
     , label "strip code" $ liftK $ walk stripCodeTail
@@ -98,6 +102,11 @@ compress (Pandoc meta blocks) = Pandoc meta $ go blocks
     go (x : xs) = x : go xs
     go [] = []
 
+
+flatten :: [Block] -> [Block]
+flatten = concatMap $ \case
+  Div a xs | a == mempty -> xs
+  t -> pure t
 
 noIndent :: Format -> [Block] -> [Block]
 noIndent f@(Format "latex") (c@CodeBlock{} : p@(Para pc@(Str str : _)) : xs) =

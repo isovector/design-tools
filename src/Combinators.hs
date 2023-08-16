@@ -3,14 +3,16 @@
 
 module Combinators where
 
-import Debug.Trace
-import Control.Monad
-import Text.Pandoc
-import Data.List
-import Data.Text (Text)
-import Utils
+import           Control.Monad
+import           Data.Either (fromLeft, fromRight, isRight)
+import           Data.Foldable (asum)
+import           Data.Function
+import           Data.List
+import           Data.Text (Text)
 import qualified Data.Text as T
-import Data.Foldable (asum)
+import           Debug.Trace
+import           Text.Pandoc
+import           Utils
 
 codeToLatexCmd :: Format -> (Text -> Maybe Text) -> Text -> Inline -> Inline
 codeToLatexCmd format match cmd = \case
@@ -49,9 +51,21 @@ mkInline (Format "latex") cls content =
 
 defnToLatexEnv :: Format -> Text -> Text -> Block -> Block
 defnToLatexEnv format match with = \case
-  DefinitionList [(Strs (traceShowId -> name), bs)]
-    | name == match ->
-        mkEnv format with [] $ join bs
+  t@(DefinitionList defs) -> do
+    let matching
+          = fmap (\case
+                    (Strs name, bs) | name == match -> Right bs
+                    t -> Left t
+                 ) defs
+    case any isRight matching of
+      False -> t
+      True -> Div mempty $ do
+        g <- groupBy (on (==) isRight) matching
+        case head g of
+          Left _ -> pure $ DefinitionList $ fmap (fromLeft undefined) g
+          Right _ -> do
+            Right e <- g
+            pure $ mkEnv format with [] $ join e
   t -> t
 
 defnOnlyInFormat :: Format -> Text -> Text -> Block -> Block
