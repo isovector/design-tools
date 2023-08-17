@@ -14,7 +14,7 @@
 module AgdaDump (doHighlight) where
 
 import           Cache
-import           Control.Lens (set)
+import           Control.Lens (set, over)
 import           Control.Monad
 import           Control.Monad.State.Strict
 import           Control.Monad.Trans.Writer.CPS (runWriterT)
@@ -72,8 +72,15 @@ instance Hashable DumpKey
 -- | State for the extraction monad.
 data St = St
   { st_indent :: Int  -- ^ The current indentation level
+  , st_next :: Int
   }
   deriving (Generic)
+
+
+nextInlineName :: ExtractM Text
+nextInlineName
+  = fmap (mappend "inline-" . T.pack . show)
+  $ gets st_next <* modify (over (field @"st_next") (+ 1))
 
 
 ------------------------------------------------------------------------------
@@ -183,6 +190,16 @@ getInlineCode c@(Code _ t)
       let key = DumpKey Inline $ hash $ show c
       extractMe key $ tell [T.replicate indent " " <> "_ = " <> t']
       pure $ InlineRef key
+  | Just tb <- T.stripPrefix "bind:" t
+  , (b, T.drop 1 -> t') <- T.span (/= ':') tb
+  = do
+      indent <- gets st_indent
+      name <- nextInlineName
+      let key = DumpKey Inline $ hash $ show c
+      let i = T.replicate indent " "
+      tell [i <> name <> " : _"]
+      extractMe key $ tell [i <> name <> " " <> b <> " = " <> t']
+      pure $ InlineRef key
 getInlineCode c = pure c
 
 
@@ -194,7 +211,7 @@ workingDir = "/home/sandy/prj/math-for-programmers/build/tex/agda"
 -- emitted code into @/tmp@
 runExtract :: Text -> ExtractM a -> IO ([DumpKey], a)
 runExtract modul m = do
-  let ((a, w), keys) = runWriter $ runWriterT $ flip evalStateT (St 0) m
+  let ((a, w), keys) = runWriter $ runWriterT $ flip evalStateT (St 0 0) m
       modul' = modul <> "-dump"
       out = T.replace modul modul' $ T.unlines w
       keyset = sort keys
@@ -340,7 +357,8 @@ parseHighlightedAgda
              . T.replace "\\<" ""
              )
          . init
-         . drop 4
+         . drop 1
+         . dropWhile (not . T.isInfixOf "\\AgdaSymbol{=}")
       DumpKey Illegal _ -> dropEnd 1 . drop 1
                  )
   . extractBetweenBanners
