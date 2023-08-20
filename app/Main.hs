@@ -59,17 +59,16 @@ main = toJSONFilter $ \(Just format :: Maybe Format) (p :: Pandoc) -> do
     , label "do ghci" $ walkM emitGhci
 
     -- LOGICAL LAYOUT
-    , label "hidden" $ liftK $ walk $ defnToLatexEnv format "Hidden" "hidden"
-    , label "noindent" $ liftK $ walk $ noIndent format
     , label "only book" $ liftK $ walk $ defnOnlyInFormat format "latex" "OnlyBook"
     , label "fix imgs" $ liftK $ walk $ fixImages format
     , label "rev2" $ liftK $ walk $ headerClassAppend format "rev2" "red"
-    , fmap pure compress
     -- , liftK $ walk $ defnToLatexEnv format "Exercise" "exercise"
     -- , liftK $ walk $ defnToLatexEnv format "Exercises" "exercise"
     , runIOorExplode . walkM (writeLatexDeathNotes format)
-
+    , label "hidden" $ liftK $ walk $ defnToLatexEnv format "Hidden" "hidden"
     , label "flatten"$ liftK $ walk flatten
+    , fmap pure compress
+    , label "noindent" $ liftK $ walk $ noIndent format
 
     -- FORMAT SPECIFIC
     , label "strip code" $ liftK $ walk stripCodeTail
