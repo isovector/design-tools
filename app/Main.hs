@@ -108,6 +108,8 @@ flatten = concatMap $ \case
   t -> pure t
 
 noIndent :: Format -> [Block] -> [Block]
+noIndent f@(Format "latex") (c@(Para [Math DisplayMath _]) : p@(Para pc@(Str str : _)) : xs) =
+    c : (Para $ RawInline (Format "latex") "\\noindent" : Space : pc) : noIndent f xs
 noIndent f@(Format "latex") (p1@Para{} : p2@Para{} : xs) =
     p1 : noIndent f (p2 : xs)
 noIndent f@(Format "latex") (p1 : p2@(Para pc@(Str str : _)) : xs) =
