@@ -19,7 +19,7 @@ import           Data.Text (Text)
 import qualified Data.Text as T
 import           System.IO.Unsafe
 import           System.Process
-import           Text.Pandoc (readerExtensions, pandocExtensions, def, readMarkdown)
+import           Text.Pandoc (Extension(..), enableExtension, readerExtensions, pandocExtensions, def, readMarkdown)
 import           Text.Pandoc.Class (runIOorExplode)
 import           Text.Pandoc.JSON
 
@@ -119,7 +119,7 @@ designHashToPandoc fn _ attr fp txt = do
   hPutStrLn stderr r
   Pandoc _ p
     <- runIOorExplode
-      $ readMarkdown def { readerExtensions = pandocExtensions }
+      $ readMarkdown def { readerExtensions = enableExtension Ext_implicit_figures pandocExtensions }
       $ T.pack r
   pure $ Div mempty p
 

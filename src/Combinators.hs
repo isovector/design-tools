@@ -43,8 +43,8 @@ escapeLatex
   . T.replace "$" "\\$"
   . T.replace "_" "\\textunderscore{}"
   . T.replace "^" "\\textasciicircum{}"
-  . T.replace "{" "\\string{"
-  . T.replace "}" "\\string}"
+  . T.replace "{" "\\{"
+  . T.replace "}" "\\}"
 
 mkInline :: Format -> Text -> Text -> Inline
 mkInline (Format "epub") cls content = Span ("", [cls], []) [Str content]
