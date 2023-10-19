@@ -129,3 +129,23 @@ mkRawEnv (Format "latex") env args bs =
 mkRawEnv (Format "epub") env args bs =
   Div ("", [env], zipWith (\ix arg -> ("data-arg" <> T.pack (show ix), arg)) [1..] args) [ Plain [Str bs] ]
 
+mkRawEnv' :: Format -> Text -> [Text] -> Block -> Block
+mkRawEnv' (Format "latex") env args bs =
+  Div ("", [], []) $ join
+    [ pure . Plain . pure . RawInline (Format "latex") $
+      mconcat
+        [ "\\begin{" <> env <> "}"
+        , case args of
+            [] -> ""
+            _ -> "{" <> T.intercalate "}{" args <> "}"
+        , "\n"
+        ]
+    , pure bs
+    , pure . Plain . pure . RawInline (Format "latex") $
+      mconcat
+        [ "\\end{" <> env <> "}"
+        ]
+    ]
+mkRawEnv' (Format "epub") env args bs =
+  Div ("", [env], zipWith (\ix arg -> ("data-arg" <> T.pack (show ix), arg)) [1..] args) [ bs ]
+
