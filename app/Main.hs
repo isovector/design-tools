@@ -28,6 +28,9 @@ main = toJSONFilter $ \(Just format :: Maybe Format) (p :: Pandoc) -> do
   hPrint stderr format
   passes p
     [ \p -> writeFile "/tmp/pandoc_input" (ppShow p) >> pure p
+    -- GHCI
+    , label "do ghci" $ walkM emitGhci
+
     -- AGDA
     , label "agdamode" $ liftK $ walk $ linkToLatexCmd format "AgdaMode" "agdamode"
     , label "agdacmds" $ liftK $ walk $ agdaCmd format
@@ -54,9 +57,6 @@ main = toJSONFilter $ \(Just format :: Maybe Format) (p :: Pandoc) -> do
 
     -- INLINE SNIPPETS
     , label "inline snippets" $ walkM inlineSnippets
-
-    -- GHCI
-    , label "do ghci" $ walkM emitGhci
 
     -- LOGICAL LAYOUT
     , label "only book" $ liftK $ walk $ defnOnlyInFormat format "latex" "OnlyBook"
