@@ -35,6 +35,7 @@ main = toJSONFilter $ \(Just format :: Maybe Format) (p :: Pandoc) -> do
     , label "agdamode" $ liftK $ walk $ linkToLatexCmd format "AgdaMode" "agdamode"
     , label "agdacmds" $ liftK $ walk $ agdaCmd format
     , label "info" $ liftK $ walk $ codeToVerbatimEnv format "info" "AgdaInfo"
+    , label "footgun" $ liftK $ walk $ defnToLatexEnv format "Footgun" "Footgun"
     , label "types" $ liftK $ walk $ prefixCodeToLatexCmd format "type:" "AgdaFunction"
     , label "agdaref" $ doHighlight
     , label "defs" $ liftK $ walk $ prefixCodeToLatexCmd format "def:" "AgdaFunction"
