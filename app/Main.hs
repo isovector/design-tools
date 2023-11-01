@@ -5,22 +5,23 @@
 
 module Main where
 
-import Data.Char hiding (Format, Space)
+import           Agda
+import           AgdaDump
+import           Combinators
+import           Data.Char hiding (Format, Space)
+import           Data.List
+import           Data.Maybe (fromMaybe)
 import qualified Data.Text as T
-import Ghci
-import Combinators
-import KEndo
-import Lib
-import Text.Pandoc.JSON
-import Text.Pandoc.Walk
-import DeathNotes
-import Text.Pandoc
-import System.IO
-import Data.List
-import Agda
-import AgdaDump
-
-import Text.Show.Pretty
+import           DeathNotes
+import           Ghci
+import           KEndo
+import           Lib
+import           System.IO
+import           Text.Pandoc
+import           Text.Pandoc.JSON
+import           Text.Pandoc.Walk
+import           Text.Read (readMaybe)
+import           Text.Show.Pretty
 
 
 main :: IO ()
@@ -144,7 +145,7 @@ replaceEbookCode s
   = let (z, s'') = span (not . isSpace) s'
      in mconcat
           [ "<span class=\"annotate\"><span class=\"fill\"></span><span class=\"annotated\">"
-          , pure $ toEnum $ fromEnum '\10102' + read z - 1
+          , pure $ toEnum $ fromEnum '\10102' + fromMaybe 1 (readMaybe @Int z) - 1
           , "</span></span>"
           , replaceEbookCode s''
           ]
