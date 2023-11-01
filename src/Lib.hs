@@ -45,7 +45,7 @@ codeToEnv format from to (CodeBlock (ident, attrs, kvs) code)
 codeToEnv _ _ _ t = t
 
 codeToVerbatimEnv :: Format -> Text -> Text -> Block -> Block
-codeToVerbatimEnv format from to (CodeBlock (ident, attrs, kvs) code)
+codeToVerbatimEnv format@(Format "latex") from to (CodeBlock (ident, attrs, kvs) code)
   | elem from attrs
     = mkRawEnv' format to [] $ mkRawEnv format "verbatim" [] code
 codeToVerbatimEnv _ _ _ t = t
