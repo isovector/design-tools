@@ -24,7 +24,8 @@ import Text.Show.Pretty
 
 
 main :: IO ()
-main = toJSONFilter $ \(Just format :: Maybe Format) (p :: Pandoc) -> do
+main = toJSONFilter $ \(Just (Format format2) :: Maybe Format) (p :: Pandoc) -> do
+  let format = Format $ if format2 == "html" then "epub" else format2
   hPrint stderr format
   passes p
     [ \p -> writeFile "/tmp/pandoc_input" (ppShow p) >> pure p
