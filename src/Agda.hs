@@ -118,7 +118,7 @@ emacsAllKeys c
     ]
 
 agdaCmdInvocToInline :: Format -> AgdaCmdInvocation -> Inline
-agdaCmdInvocToInline f cmd = Span ("", [], []) $
+agdaCmdInvocToInline f@(Format "latex") cmd = Span ("", [], []) $
   [ mkInline f "AgdaCmd" $ T.pack $ drop 7 $ show $ ac_cmd cmd
   ] <>
   [ case arg of
@@ -128,7 +128,30 @@ agdaCmdInvocToInline f cmd = Span ("", [], []) $
   ] <>
   [ mkInline f "AgdaEmacsInput" $ emacsAllKeys cmd
   ]
+agdaCmdInvocToInline f@(Format "epub") cmd = mconcat $
+  [ mkInline f "AgdaCmd" $ T.pack $ drop 7 $ show $ ac_cmd cmd
+  ] <>
+  [ case arg of
+     "" -> Str " without any argument"
+     _  -> mconcat
+      [ Str " with argument "
+      , mkInline f "AgdaHole" arg
+      ]
+  | Just arg <- [ac_arg cmd]
+  ] <>
+  [ Str " ("
+  , mkInline f "AgdaInput" $ emacsAllKeys cmd
+  , Str " in Emacs and VS Code)"
+  ]
 
+instance Semigroup Inline where
+  Span f x <> Span _ y = Span f $ x <> y
+  Span f x <> y = Span f $ x <> [y]
+  x <> Span f y = Span f $ x : y
+  x <> y = Span ("", [], []) [x, y]
+
+instance Monoid Inline where
+  mempty = Span ("", [], []) mempty
 
 agdaCmd :: Format -> Inline -> Inline
 agdaCmd format = \case

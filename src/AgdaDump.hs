@@ -22,7 +22,6 @@ import           Control.Monad.Writer.CPS
 import           Data.Char (isSpace)
 import           Data.Generics.Product.Fields
 import           Data.Hashable
-import           Data.List (sort)
 import           Data.List.Extra
 import           Data.Map (Map)
 import qualified Data.Map as M
@@ -32,14 +31,14 @@ import           Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import           GHC.Generics
-import           System.FilePath
 import           System.Directory
+import           System.Exit
+import           System.FilePath
 import           System.IO
 import           System.Process
 import           Text.Pandoc.Definition
 import           Text.Pandoc.Walk
 import           Text.Read (readMaybe)
-import System.Exit
 
 
 ------------------------------------------------------------------------------
@@ -224,8 +223,8 @@ runExtract modul m = do
 -- document, emitting it to a seperate file, running the syntax highlighter on
 -- that, and then splices the formatted syntax back into the original pandoc
 -- document.
-doHighlight :: Pandoc -> IO Pandoc
-doHighlight p = do
+doHighlight :: Format -> Pandoc -> IO Pandoc
+doHighlight format p = do
   let modul = fromMaybe "" $ getFirst $ query getModule p
       modul' = modul <> "-dump"
 
@@ -312,8 +311,8 @@ extractBetweenBanners = go undefined [[]]
 
 ------------------------------------------------------------------------------
 -- | code to test 'extractBetweenBanners'
-test :: Text
-test = T.unlines
+_test :: Text
+_test = T.unlines
   [ "\\>[0]\\AgdaComment{--\\ >>>>>>>>>>\\ START\\ DumpKey\\ Inline\\ 0}\\<%"
   , "a"
   , "b"

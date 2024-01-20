@@ -40,7 +40,7 @@ main = toJSONFilter $ \(Just (Format format2) :: Maybe Format) (p :: Pandoc) -> 
     , label "footgun" $ liftK $ walk $ defnToLatexEnv format "Footgun" "Footgun"
     , label "unicodetable" $ liftK $ walk $ codeToVerbatimEnv format "unicodetable" "UnicodeTable"
     , label "types" $ liftK $ walk $ prefixCodeToLatexCmd format "type:" "AgdaFunction"
-    , label "agdaref" $ doHighlight
+    , label "agdaref" $ doHighlight format
     , label "defs" $ liftK $ walk $ prefixCodeToLatexCmd format "def:" "AgdaFunction"
     , label "fields" $ liftK $ walk $ prefixCodeToLatexCmd format "field:" "AgdaField"
     , label "hole" $ liftK $ walk $ prefixCodeToLatexCmd format "hole:" "AgdaHole"
@@ -123,7 +123,9 @@ noIndent _ t = t
 
 
 ebookCode :: Format -> Block -> Block
-ebookCode (Format "epub") (CodeBlock _ str) = RawBlock (Format "html") $ mconcat
+ebookCode (Format "epub") (CodeBlock (_, cls, _) str)
+  | not $ elem "agda" cls
+  = RawBlock (Format "html") $ mconcat
   [ "<pre>"
   , T.pack $ replaceEbookCode $ stringToHtmlString $ T.unpack str
   , "</pre>"

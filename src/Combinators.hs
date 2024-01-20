@@ -41,13 +41,13 @@ escapeLatex :: Text -> Text
 escapeLatex
   = T.replace "~" "\\sim{}"
   . T.replace "$" "\\$"
-  . T.replace "_" "\\textunderscore{}"
+  . T.replace "_" "\\string_"
   . T.replace "^" "\\textasciicircum{}"
   . T.replace "{" "\\{"
   . T.replace "}" "\\}"
 
 mkInline :: Format -> Text -> Text -> Inline
-mkInline (Format "epub") cls content = Span ("", [cls], []) [Str content]
+mkInline (Format "epub") cls content = Span ("", [T.replace "Agda" "" cls], []) [Str content]
 mkInline (Format "latex") cls content =
   RawInline (Format "latex") $ "\\" <> cls <> "{" <> escapeLatex content <> "}"
 
