@@ -47,6 +47,7 @@ newtype Version = Version Int
   deriving (Eq, Ord, Show, Read, Bounded, Generic)
 
 instance Hashable Version
+instance Hashable Format
 
 
 ------------------------------------------------------------------------------
@@ -202,19 +203,19 @@ getInlineCode c@(Code _ t)
 getInlineCode c = pure c
 
 
-workingDir :: FilePath
-workingDir = "/home/sandy/prj/math-for-programmers/build/tex/agda"
+workingDir :: Format -> FilePath
+workingDir _ = "/home/sandy/prj/math-for-programmers/build/tex/agda"
 
 ------------------------------------------------------------------------------
 -- | Given a module name, run the 'ExtractM' monad, dropping the resulting
 -- emitted code into @/tmp@
-runExtract :: Text -> ExtractM a -> IO ([DumpKey], a)
-runExtract modul m = do
+runExtract :: Format -> Text -> ExtractM a -> IO ([DumpKey], a)
+runExtract format modul m = do
   let ((a, w), keys) = runWriter $ runWriterT $ flip evalStateT (St 0 0) m
       modul' = modul <> "-dump"
       out = T.replace modul modul' $ T.unlines w
       keyset = sort keys
-  T.writeFile (workingDir </> T.unpack modul' <> ".lagda.tex") out
+  T.writeFile (workingDir format </> T.unpack modul' <> ".lagda.tex") out
   pure (keyset, a)
 
 
@@ -228,15 +229,33 @@ doHighlight format p = do
   let modul = fromMaybe "" $ getFirst $ query getModule p
       modul' = modul <> "-dump"
 
+      (startCode, endCode, agdaArgs, agdaOutput, ext) =
+        case format of
+          Format "latex" ->
+            ( tell ["\\begin{code}"]
+            , tell ["\\end{code}"]
+            , ["--latex", "--only-scope-checking", T.unpack modul' <> ".lagda.tex"]
+            , "latex"
+            , "tex"
+            )
+          Format "epub"  ->
+            ( tell ["<code>"]
+            , tell ["</code>"]
+            , ["--html", "--html-highlight=code", "--only-scope-checking", T.unpack modul' <> ".lagda.md"]
+            , "html"
+            , "html"
+            )
+          _ -> error "bad format"
+
   case modul == "" of
     True -> pure p
     False -> do
       -- Get the dumpkey set from the document, and emit the necessary code to
       -- check.
-      (inl_keyset, p') <- runExtract modul $ do
-        tell ["\\begin{code}"]
+      (inl_keyset, p') <- runExtract format modul $ do
+        startCode
         p' <- walkM getRealAndInlineCode p
-        tell ["\\end{code}"]
+        endCode
         pure p'
 
       -- Run @agda --latex@ on the emitted code, and then parse out the highlighted
@@ -245,40 +264,40 @@ doHighlight format p = do
       -- 'caching' uses the keyset as a cache key, meaning we don't need to rerun
       -- this step if the actual bits to highlight haven't changed since last time.
       -- The keyset itself depends on the hash of each snippet.
-      inl_dump <- caching (Inline, inl_keyset, Version 0) $ do
+      inl_dump <- caching (Inline, inl_keyset, format, Version 0) $ do
         (code, out, _)
-          <- withCurrentDirectory workingDir
-            $ readProcessWithExitCode "agda" ["--latex", "--only-scope-checking", T.unpack modul' <> ".lagda.tex"] ""
+          <- withCurrentDirectory (workingDir format)
+            $ readProcessWithExitCode "agda" agdaArgs ""
         unless (code == ExitSuccess) $ do
           hPutStr stderr out
           error "agda died"
 
-        f <- T.readFile $ workingDir </> "latex" </> T.unpack modul' <> ".tex"
-        pure $ parseHighlightedAgda f
+        f <- T.readFile $ workingDir format </> agdaOutput </> T.unpack modul' <.> ext
+        pure $ parseHighlightedAgda format f
       hPrint stderr inl_keyset
 
 
       -- Now do it all again, but this time for invalid code
       -- check.
-      (inv_keyset, p'') <- runExtract modul $ do
-        tell ["\\begin{code}"]
+      (inv_keyset, p'') <- runExtract format modul $ do
+        startCode
         p'' <- walkM getRealAndIllegalCode p'
-        tell ["\\end{code}"]
+        endCode
         pure p''
       hPrint stderr inv_keyset
-      inv_dump <- caching (Illegal, inv_keyset, Version 0) $ do
+      inv_dump <- caching (Illegal, inv_keyset, format, Version 0) $ do
         (code, out, _)
-          <- withCurrentDirectory workingDir
-            $ readProcessWithExitCode "agda" ["--latex", "--only-scope-checking", T.unpack modul' <> ".lagda.tex"] ""
+          <- withCurrentDirectory (workingDir format)
+            $ readProcessWithExitCode "agda" agdaArgs ""
 
         unless (code == ExitSuccess) $ do
           hPutStr stderr out
           error "agda died"
-        f <- T.readFile $ workingDir </> "latex" </> T.unpack modul' <> ".tex"
-        pure $ parseHighlightedAgda f
+        f <- T.readFile $ workingDir format </> agdaOutput </> T.unpack modul' <.> ext
+        pure $ parseHighlightedAgda format f
 
       let dump = inl_dump <> inv_dump
-      pure $ walk (spliceInline dump) $ walk (spliceBlock dump) p''
+      pure $ walk (spliceInline dump) $ walk (spliceBlock format dump) p''
 
 
 ------------------------------------------------------------------------------
@@ -323,11 +342,11 @@ _test = T.unlines
 ------------------------------------------------------------------------------
 -- | Splice a 'DumpKey' map back into a 'Block'; in essence, replacing the
 -- 'IllegalRef' with the highlighted results.
-spliceBlock :: Map DumpKey Text -> Block -> Block
-spliceBlock dk (IllegalRef key)
+spliceBlock :: Format -> Map DumpKey Text -> Block -> Block
+spliceBlock format dk (IllegalRef key)
   | Just t <- M.lookup key dk
-  = RawBlock "latex" t
-spliceBlock _ b = b
+  = RawBlock format t
+spliceBlock _ _ b = b
 
 ------------------------------------------------------------------------------
 -- | Splice a 'DumpKey' map back into a 'Inline'; in essence, replacing the
@@ -342,12 +361,15 @@ spliceInline _ b = b
 ------------------------------------------------------------------------------
 -- | Given the source of a highlighted Agda tex document, parse out the DumpKey
 -- map corresponding to highlighted results.
-parseHighlightedAgda :: Text -> Map DumpKey Text
-parseHighlightedAgda
+parseHighlightedAgda :: Format -> Text -> Map DumpKey Text
+parseHighlightedAgda format
   = M.mapWithKey (\k t ->
       case k of
         DumpKey Inline _ -> T.replace "%\n" "" t
-        DumpKey Illegal _ -> "\\begin{VERYILLEGALCODE}[indent=666]%\n%\n" <> t <> "\\end{VERYILLEGALCODE}"
+        DumpKey Illegal _ ->
+          case format of
+            Format "latex" -> "\\begin{VERYILLEGALCODE}[indent=666]%\n%\n" <> t <> "\\end{VERYILLEGALCODE}"
+            Format "epub"  -> "<illegal-code>\n\n" <> t <> "</illegal-code>"
     )
   . fmap T.unlines
   . M.mapWithKey (\case
